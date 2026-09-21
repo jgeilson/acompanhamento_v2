@@ -90,7 +90,9 @@ export default function App() {
         setMeetings(loadedMeetings);
         setActions(loadedActions);
 
-        showFeedback(`Planilha conectada! ${loadedTeachers.length} docente(s), ${loadedClasses.length} turma(s) e ${loadedMeetings.length} reunião(ões) carregados.`);
+        if (!silent) {
+          showFeedback(`Dados atualizados! ${loadedTeachers.length} docente(s), ${loadedClasses.length} turma(s) e ${loadedMeetings.length} reunião(ões) carregados.`);
+        }
       } else if (!silent && data.error) {
         showFeedback(`Erro ao carregar dados: ${data.error}`, 'error');
       }

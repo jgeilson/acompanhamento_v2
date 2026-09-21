@@ -54,8 +54,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          
-
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenNewMeeting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>Nova Reunião</span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}

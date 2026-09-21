@@ -106,37 +106,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Sheets Integration Status when empty */}
-      {totalMeetings === 0 && teachers.length === 0 && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-1.5 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${isSheetsConfigured ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-              <span className="text-xs uppercase font-bold text-slate-300 tracking-wider">
-                {isSheetsConfigured ? 'Planilha Integrada com Sucesso' : 'Sincronização com Google Sheets'}
-              </span>
-            </div>
-            <h3 className="text-xl font-bold font-display text-white">
-              Pronto para os Acompanhamentos
-            </h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              O sistema está conectado de forma segura com o Google Sheets no backend. Seus dados cadastrados na planilha serão carregados e novas reuniões salvas serão sincronizadas diretamente.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={onOpenNewMeeting}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Registrar Primeira Reunião</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      
-
       {/* Metric KPI Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
