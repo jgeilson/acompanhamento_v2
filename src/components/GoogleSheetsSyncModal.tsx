@@ -174,15 +174,15 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         body: JSON.stringify({ config: getConfigPayload() })
       });
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || contentType.includes('text/html')) {
-        alert('O servidor Vercel não possui as funções de API ativas (retornou erro ou HTML). Certifique-se de sincronizar com o GitHub os novos arquivos (vercel.json e pasta api/) para que o Vercel ative o backend.');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        alert(`Erro de comunicação com o servidor (Status ${res.status}).`);
         return;
       }
 
-      const data = await res.json();
-
-      if (data.success || Array.isArray(data.teachers)) {
+      if (data?.success || Array.isArray(data?.teachers)) {
         onDataLoaded({
           teachers: data.teachers,
           subjects: data.subjects,
@@ -200,7 +200,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         setSyncResult(`Dados carregados da Planilha Google! ${profs} prof(s), ${turmas} turma(s), ${planos} plano(s) e ${reunioes} reunião(ões) sincronizados com o app.`);
         setStatusMessage(`Dados importados com sucesso! Abas ativas no app.`);
       } else {
-        alert(`Erro ao carregar dados da planilha: ${data.error || 'Formato inválido'}`);
+        alert(`Erro ao carregar dados da planilha: ${data?.error || 'Formato inválido'}`);
       }
     } catch (err: any) {
       alert(`Erro de comunicação com o servidor: ${err.message || 'Verifique a conexão.'}`);
@@ -223,16 +223,16 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         body: JSON.stringify(getConfigPayload())
       });
 
-      const contentType = res.headers.get('content-type') || '';
-      if (!res.ok || contentType.includes('text/html')) {
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
         setConnectionStatus('error');
-        setStatusMessage('As rotas de backend (/api) não responderam no Vercel. Envie as alterações (vercel.json e pasta api/) para o GitHub.');
+        setStatusMessage(`Servidor retornou resposta inesperada (Status ${res.status}).`);
         return;
       }
 
-      const data = await res.json();
-
-      if (data.success) {
+      if (res.ok && data?.success) {
         setConnectionStatus('success');
         setSpreadsheetTitle(data.title || 'Planilha Conectada');
         setStatusMessage(`Conexão confirmada! Carregando dados das abas...`);
@@ -240,7 +240,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         await executeLoadData();
       } else {
         setConnectionStatus('error');
-        setStatusMessage(data.error || 'Não foi possível acessar a planilha.');
+        setStatusMessage(data?.error || `Não foi possível acessar a planilha (Status ${res.status}).`);
       }
     } catch (err: any) {
       setConnectionStatus('error');
