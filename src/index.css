@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #0f172a !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Oculta toda a tela de fundo (zerando a altura fantasma que duplicava a folha) */
+  header,
+  nav,
+  aside,
+  main,
+  .print\:hidden,
+  button {
+    display: none !important;
+  }
+
+  /* Remove o modal fixo e o torna estático (para não se repetir nas páginas) */
+  .fixed,
+  .fixed.inset-0 {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  .fixed > div,
+  .fixed.inset-0 > div {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Documento da reunião no fluxo normal e estático */
+  #printable-meeting {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  /* Retira aparência de cartão arredondado */
+  #printable-meeting .rounded-2xl,
+  #printable-meeting .rounded-xl,
+  #printable-meeting .rounded-lg,
+  #printable-meeting .rounded-full,
+  #printable-meeting .rounded {
+    border-radius: 0 !important;
+  }
+
+  #printable-meeting .shadow,
+  #printable-meeting .shadow-sm,
+  #printable-meeting .shadow-md,
+  #printable-meeting .shadow-lg,
+  #printable-meeting .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* Fundo branco e bordas limpas */
+  #printable-meeting .bg-slate-50,
+  #printable-meeting .bg-indigo-50\/70 {
+    background: white !important;
+  }
+
+  #printable-meeting .border-slate-200,
+  #printable-meeting .border-indigo-200 {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Tabela limpa */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  #printable-meeting th,
+  #printable-meeting td {
+    padding: 4px 6px !important;
+  }
+}

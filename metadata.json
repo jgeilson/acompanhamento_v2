@@ -1,0 +1,8 @@
+{
+  "name": "Instrumento de Acompanhamento Pedagógico",
+  "description": "Sistema para a coordenação pedagógica registrar e acompanhar as reuniões quinzenais com os professores, mapear o contexto das turmas, registrar motivos pedagógicos e acompanhar encaminhamentos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
