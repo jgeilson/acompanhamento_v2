@@ -16,5 +16,5 @@ export const INITIAL_BIWEEKLY_MEETINGS: BiweeklyMeeting[] = [];
 export const INITIAL_PEDAGOGICAL_ACTIONS: PedagogicalAction[] = [];
 
 // Nome padrão da Coordenação Pedagógica
-export const DEFAULT_COORDINATOR_NAME = 'Coordenação Pedagógica';
+export const DEFAULT_COORDINATOR_NAME = 'Isabelle Rocha';
 
