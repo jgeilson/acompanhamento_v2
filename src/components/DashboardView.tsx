@@ -46,6 +46,8 @@ interface DashboardViewProps {
   onOpenNewMeeting: () => void;
   onNavigateTab: (tab: ActiveTab) => void;
   onSelectMeetingDetail: (meeting: BiweeklyMeeting) => void;
+  onOpenSheetsSync?: () => void;
+  isSheetsConfigured?: boolean;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -55,7 +57,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   classGroups,
   onOpenNewMeeting,
   onNavigateTab,
-  onSelectMeetingDetail
+  onSelectMeetingDetail,
+  onOpenSheetsSync,
+  isSheetsConfigured = false
 }) => {
   // Metric Calculations
   const totalMeetings = meetings.length;
@@ -97,16 +101,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            
-
             <h2 className="text-2xl sm:text-3xl font-bold font-display text-slate-100">
               Dados Geral
             </h2>
           </div>
-
-          
         </div>
       </div>
+
+      {/* Sheets Integration Notice when empty */}
+      {totalMeetings === 0 && teachers.length === 0 && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-indigo-950 text-white p-6 rounded-2xl border border-emerald-800/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs uppercase font-bold text-emerald-300 tracking-wider">Integração Direta com Google Sheets</span>
+            </div>
+            <h3 className="text-xl font-bold font-display text-white">
+              Sincronize com sua Planilha Pedagógica
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              O aplicativo está pronto e sem dados fictícios. Conecte sua Planilha Google para carregar automaticamente o corpo docente, turmas, disciplinas e planejamentos escolares, ou grave suas reuniões em tempo real.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {onOpenSheetsSync && (
+              <button
+                onClick={onOpenSheetsSync}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
+              >
+                <span>Conectar / Carregar Planilha</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       
 

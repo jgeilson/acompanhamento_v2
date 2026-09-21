@@ -103,7 +103,15 @@ Retorne um JSON com:
 });
 
 // Google Sheets Integration API Routes
-import { testAndSetupSheets, appendMeetingsToSheet, readDataFromSheet, syncAllToSheets, readAllFromSheets } from './server/sheets.js';
+import { 
+  testAndSetupSheets, 
+  appendMeetingsToSheet, 
+  appendMeetingToSheet,
+  updateActionStatusInSheet,
+  readDataFromSheet, 
+  syncAllToSheets, 
+  readAllFromSheets 
+} from './server/sheets.js';
 
 app.get('/api/sheets/status', (req, res) => {
   const isConfigured = Boolean(
@@ -150,11 +158,47 @@ app.post('/api/sheets/sync-all', async (req, res) => {
   }
 });
 
+app.post('/api/sheets/save-meeting', async (req, res) => {
+  try {
+    const { meeting, config } = req.body || {};
+    if (!meeting) {
+      return res.status(400).json({ error: 'Reunião não fornecida.' });
+    }
+
+    const result = await appendMeetingToSheet(meeting, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar reunião na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar reunião na Planilha Google.'
+    });
+  }
+});
+
+app.post('/api/sheets/update-action-status', async (req, res) => {
+  try {
+    const { actionId, newStatus, config } = req.body || {};
+    if (!actionId || !newStatus) {
+      return res.status(400).json({ error: 'Parâmetros incompletos.' });
+    }
+
+    const result = await updateActionStatusInSheet(actionId, newStatus, config);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao atualizar status na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao atualizar encaminhamento na Planilha Google.'
+    });
+  }
+});
+
 app.post('/api/sheets/load-all', async (req, res) => {
   try {
     const { config } = req.body || {};
     const result = await readAllFromSheets(config);
-    return res.json({ success: true, ...result });
+    return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao carregar dados da Planilha Google:', error);
     return res.status(500).json({

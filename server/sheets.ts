@@ -194,8 +194,8 @@ async function ensureSheetHeaders(sheets: any, spreadsheetId: string) {
     },
     {
       tab: 'Reuniões',
-      range: 'Reuniões!A1:O1',
-      values: [['ID Reunião', 'Data', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Bimestre', 'Periodicidade', 'Quinzena', 'Razão Fator', 'Contexto Pedagógico', 'Tópicos Concluídos', 'Qtd Encaminhamentos']]
+      range: 'Reuniões!A1:R1',
+      values: [['ID Reunião', 'Data', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Bimestre', 'Periodicidade', 'Quinzena', 'Razão Principal', 'Contexto Pedagógico', 'Tópicos Concluídos', 'Qtd Encaminhamentos', 'Progresso Tópicos JSON', 'Verificação Anterior JSON', 'Coordenador']]
     },
     {
       tab: 'Encaminhamentos',
@@ -205,7 +205,6 @@ async function ensureSheetHeaders(sheets: any, spreadsheetId: string) {
   ];
 
   for (const h of headers) {
-    // Check if header row exists
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${h.tab}!A1:Z1`
@@ -235,17 +234,19 @@ export async function syncAllToSheets(data: {
 }, config?: GoogleSheetsConfig) {
   const { sheets, spreadsheetId } = getSheetsClient(config);
 
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
   // 1. Professores
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Professores!A2:Z1000' }).catch(() => {});
   if (data.teachers && data.teachers.length > 0) {
     const rows = data.teachers.map(t => [
       t.id,
       t.name,
       t.email,
       t.avatarUrl || '',
-      (t.subjects || []).join(','),
-      (t.classes || []).join(',')
+      (t.subjects || []).join(', '),
+      (t.classes || []).join(', ')
     ]);
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Professores!A2:Z1000' }).catch(() => {});
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: 'Professores!A2',
@@ -255,6 +256,7 @@ export async function syncAllToSheets(data: {
   }
 
   // 2. Turmas
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Turmas!A2:Z1000' }).catch(() => {});
   if (data.classGroups && data.classGroups.length > 0) {
     const rows = data.classGroups.map(c => [
       c.id,
@@ -262,7 +264,6 @@ export async function syncAllToSheets(data: {
       c.shift,
       c.totalStudents
     ]);
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Turmas!A2:Z1000' }).catch(() => {});
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: 'Turmas!A2',
@@ -272,6 +273,7 @@ export async function syncAllToSheets(data: {
   }
 
   // 3. Disciplinas
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Disciplinas!A2:Z1000' }).catch(() => {});
   if (data.subjects && data.subjects.length > 0) {
     const rows = data.subjects.map(s => [
       s.id,
@@ -280,7 +282,6 @@ export async function syncAllToSheets(data: {
       s.color,
       s.totalWorkloadHours
     ]);
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Disciplinas!A2:Z1000' }).catch(() => {});
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: 'Disciplinas!A2',
@@ -290,6 +291,7 @@ export async function syncAllToSheets(data: {
   }
 
   // 4. Planejamentos
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Planejamento!A2:Z3000' }).catch(() => {});
   if (data.bimonthlyPlans && data.bimonthlyPlans.length > 0) {
     const planRows: any[] = [];
     data.bimonthlyPlans.forEach(p => {
@@ -314,7 +316,6 @@ export async function syncAllToSheets(data: {
       });
     });
     if (planRows.length > 0) {
-      await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Planejamento!A2:Z2000' }).catch(() => {});
       await sheets.spreadsheets.values.update({
         spreadsheetId,
         range: 'Planejamento!A2',
@@ -325,6 +326,7 @@ export async function syncAllToSheets(data: {
   }
 
   // 5. Reuniões
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Reuniões!A2:Z2000' }).catch(() => {});
   if (data.meetings && data.meetings.length > 0) {
     const meetingRows = data.meetings.map(m => [
       m.id,
@@ -341,9 +343,11 @@ export async function syncAllToSheets(data: {
       m.primaryReason || (m.pedagogicalReasons || []).join(', '),
       m.pedagogicalContextNotes,
       (m.topicProgress || []).filter((t: any) => t.status === 'CONCLUIDO').length,
-      (m.newActions || []).length
+      (m.newActions || []).length,
+      JSON.stringify(m.topicProgress || []),
+      JSON.stringify(m.previousActionsVerification || []),
+      m.coordinatorName || ''
     ]);
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Reuniões!A2:Z2000' }).catch(() => {});
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: 'Reuniões!A2',
@@ -353,6 +357,7 @@ export async function syncAllToSheets(data: {
   }
 
   // 6. Encaminhamentos
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Encaminhamentos!A2:Z2000' }).catch(() => {});
   if (data.actions && data.actions.length > 0) {
     const actionRows = data.actions.map(act => [
       act.id,
@@ -369,7 +374,6 @@ export async function syncAllToSheets(data: {
       act.targetMeetingPeriod,
       act.status || 'PENDENTE'
     ]);
-    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Encaminhamentos!A2:Z2000' }).catch(() => {});
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: 'Encaminhamentos!A2',
@@ -382,22 +386,130 @@ export async function syncAllToSheets(data: {
 }
 
 /**
- * Appends meetings and actions to the Google Sheet
+ * Appends a single meeting and its actions to Google Sheets
+ */
+export async function appendMeetingToSheet(meeting: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const meetingRow = [
+    meeting.id,
+    meeting.meetingDate,
+    meeting.teacherId,
+    meeting.teacherName,
+    meeting.subjectId,
+    meeting.subjectName,
+    meeting.classGroupId,
+    meeting.classGroupName,
+    meeting.bimester,
+    meeting.periodicity || 'QUINZENAL',
+    meeting.fortnightPeriod,
+    meeting.primaryReason || (meeting.pedagogicalReasons || []).join(', '),
+    meeting.pedagogicalContextNotes,
+    (meeting.topicProgress || []).filter((t: any) => t.status === 'CONCLUIDO').length,
+    (meeting.newActions || []).length,
+    JSON.stringify(meeting.topicProgress || []),
+    JSON.stringify(meeting.previousActionsVerification || []),
+    meeting.coordinatorName || ''
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Reuniões!A2',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: {
+      values: [meetingRow]
+    }
+  });
+
+  if (meeting.newActions && meeting.newActions.length > 0) {
+    const actionRows = meeting.newActions.map((act: any) => [
+      act.id,
+      meeting.id,
+      meeting.teacherId,
+      meeting.teacherName,
+      meeting.subjectId,
+      meeting.subjectName,
+      meeting.classGroupId,
+      meeting.classGroupName,
+      act.description,
+      act.category,
+      act.createdDate || meeting.meetingDate,
+      act.targetMeetingPeriod,
+      act.status || 'PENDENTE'
+    ]);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Encaminhamentos!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: actionRows
+      }
+    });
+  }
+
+  return { success: true };
+}
+
+/**
+ * Updates an action's status directly in the Encaminhamentos sheet
+ */
+export async function updateActionStatusInSheet(actionId: string, newStatus: string, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Encaminhamentos!A2:M1000'
+  }).catch(() => ({ data: { values: [] } }));
+
+  const rows = res.data.values || [];
+  const rowIndex = rows.findIndex((r: any[]) => r[0] === actionId);
+
+  if (rowIndex !== -1) {
+    const sheetRowNumber = rowIndex + 2;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Encaminhamentos!M${sheetRowNumber}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[newStatus]]
+      }
+    });
+    return { success: true, updatedRow: sheetRowNumber };
+  }
+
+  return { success: false, error: 'Ação não localizada na planilha' };
+}
+
+/**
+ * Appends multiple meetings and actions to the Google Sheet
  */
 export async function appendMeetingsToSheet(meetings: any[], config?: GoogleSheetsConfig) {
   const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
 
   const meetingRows = meetings.map(m => [
     m.id,
     m.meetingDate,
+    m.teacherId,
     m.teacherName,
+    m.subjectId,
     m.subjectName,
+    m.classGroupId,
     m.classGroupName,
+    m.bimester,
     m.periodicity || 'QUINZENAL',
-    (m.pedagogicalReasons || [m.primaryReason]).join(', '),
+    m.fortnightPeriod,
+    m.primaryReason || (m.pedagogicalReasons || []).join(', '),
     m.pedagogicalContextNotes,
     (m.topicProgress || []).filter((t: any) => t.status === 'CONCLUIDO').length,
-    (m.newActions || []).length
+    (m.newActions || []).length,
+    JSON.stringify(m.topicProgress || []),
+    JSON.stringify(m.previousActionsVerification || []),
+    m.coordinatorName || ''
   ]);
 
   if (meetingRows.length > 0) {
@@ -412,19 +524,23 @@ export async function appendMeetingsToSheet(meetings: any[], config?: GoogleShee
     });
   }
 
-  // Also collect new actions to append
   const actionRows: any[] = [];
   meetings.forEach(m => {
     (m.newActions || []).forEach((act: any) => {
       actionRows.push([
         act.id,
+        m.id,
+        m.teacherId,
         m.teacherName,
+        m.subjectId,
+        m.subjectName,
+        m.classGroupId,
         m.classGroupName,
-        act.category,
         act.description,
+        act.category,
+        act.createdDate || m.meetingDate,
         act.targetMeetingPeriod,
-        act.status || 'PENDENTE',
-        m.meetingDate
+        act.status || 'PENDENTE'
       ]);
     });
   });
@@ -462,62 +578,75 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
   };
 
   const [rawTeachers, rawClasses, rawSubjects, rawPlans, rawMeetings, rawActions] = await Promise.all([
-    getTabValues('Professores', 'A2:F500'),
-    getTabValues('Turmas', 'A2:D500'),
-    getTabValues('Disciplinas', 'A2:E500'),
-    getTabValues('Planejamento', 'A2:M2000'),
-    getTabValues('Reuniões', 'A2:O2000'),
+    getTabValues('Professores', 'A2:F1000'),
+    getTabValues('Turmas', 'A2:D1000'),
+    getTabValues('Disciplinas', 'A2:E1000'),
+    getTabValues('Planejamento', 'A2:M3000'),
+    getTabValues('Reuniões', 'A2:R2000'),
     getTabValues('Encaminhamentos', 'A2:M2000')
   ]);
 
+  const clean = (val: any) => (val === undefined || val === null ? '' : String(val).trim());
+  const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30);
+
   // Parse Teachers
-  const teachers = rawTeachers.map((row: any[]) => ({
-    id: row[0] || '',
-    name: row[1] || '',
-    email: row[2] || '',
-    avatarUrl: row[3] || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-    subjects: (row[4] || '').split(',').map((s: string) => s.trim()).filter(Boolean),
-    classes: (row[5] || '').split(',').map((c: string) => c.trim()).filter(Boolean)
-  })).filter(t => t.id && t.name);
+  const teachers = rawTeachers.map((row: any[], index: number) => {
+    const name = clean(row[1]);
+    const id = clean(row[0]) || (name ? `prof-${slugify(name)}` : `prof-${index + 1}`);
+    const email = clean(row[2]) || '';
+    const avatarUrl = clean(row[3]) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150';
+    const subjects = clean(row[4]).split(',').map(s => s.trim()).filter(Boolean);
+    const classes = clean(row[5]).split(',').map(c => c.trim()).filter(Boolean);
+
+    return { id, name, email, avatarUrl, subjects, classes };
+  }).filter(t => t.name);
 
   // Parse Classes
-  const classGroups = rawClasses.map((row: any[]) => ({
-    id: row[0] || '',
-    name: row[1] || '',
-    shift: row[2] || 'Matutino',
-    totalStudents: parseInt(row[3] || '30', 10)
-  })).filter(c => c.id && c.name);
+  const classGroups = rawClasses.map((row: any[], index: number) => {
+    const name = clean(row[1]);
+    const id = clean(row[0]) || (name ? `turma-${slugify(name)}` : `turma-${index + 1}`);
+    const shift = clean(row[2]) || 'Matutino';
+    const totalStudents = parseInt(clean(row[3]) || '30', 10) || 30;
+
+    return { id, name, shift, totalStudents };
+  }).filter(c => c.name);
 
   // Parse Subjects
-  const subjects = rawSubjects.map((row: any[]) => ({
-    id: row[0] || '',
-    name: row[1] || '',
-    code: row[2] || '',
-    color: row[3] || '#2563eb',
-    totalWorkloadHours: parseInt(row[4] || '80', 10)
-  })).filter(s => s.id && s.name);
+  const subjects = rawSubjects.map((row: any[], index: number) => {
+    const name = clean(row[1]);
+    const id = clean(row[0]) || (name ? `disc-${slugify(name)}` : `disc-${index + 1}`);
+    const code = clean(row[2]) || id.toUpperCase();
+    const color = clean(row[3]) || '#2563eb';
+    const totalWorkloadHours = parseInt(clean(row[4]) || '80', 10) || 80;
+
+    return { id, name, code, color, totalWorkloadHours };
+  }).filter(s => s.name);
 
   // Parse Bimonthly Plans
   const plansMap = new Map<string, any>();
-  rawPlans.forEach((row: any[]) => {
-    const planId = row[0];
-    if (!planId) return;
+  rawPlans.forEach((row: any[], index: number) => {
+    const planId = clean(row[0]) || `plan-${index + 1}`;
+    const teacherId = clean(row[1]);
+    const subjectId = clean(row[2]);
+    const classGroupId = clean(row[3]);
+    const bimester = parseInt(clean(row[4]) || '1', 10) || 1;
+    const year = parseInt(clean(row[5]) || '2026', 10) || 2026;
 
     if (!plansMap.has(planId)) {
       plansMap.set(planId, {
         id: planId,
-        teacherId: row[1] || '',
-        subjectId: row[2] || '',
-        classGroupId: row[3] || '',
-        bimester: parseInt(row[4] || '3', 10),
-        year: parseInt(row[5] || '2026', 10),
+        teacherId,
+        subjectId,
+        classGroupId,
+        bimester,
+        year,
         periodsMap: new Map<number, any>()
       });
     }
 
     const plan = plansMap.get(planId);
-    const fortnightNum = parseInt(row[6] || '1', 10);
-    const periodTitle = row[7] || `${fortnightNum}ª Quinzena`;
+    const fortnightNum = parseInt(clean(row[6]) || '1', 10) || 1;
+    const periodTitle = clean(row[7]) || `${fortnightNum}ª Quinzena`;
 
     if (!plan.periodsMap.has(fortnightNum)) {
       plan.periodsMap.set(fortnightNum, {
@@ -528,13 +657,16 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     }
 
     const period = plan.periodsMap.get(fortnightNum);
-    if (row[8]) { // topicId
+    const topicId = clean(row[8]);
+    const topicTitle = clean(row[9]);
+
+    if (topicTitle || topicId) {
       period.topics.push({
-        id: row[8],
-        title: row[9] || '',
-        bnccCode: row[10] || '',
-        estimatedHours: parseInt(row[11] || '6', 10),
-        unitTitle: row[12] || ''
+        id: topicId || `top-${slugify(topicTitle)}`,
+        title: topicTitle,
+        bnccCode: clean(row[10]),
+        estimatedHours: parseInt(clean(row[11]) || '6', 10) || 6,
+        unitTitle: clean(row[12])
       });
     }
   });
@@ -550,43 +682,75 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
   }));
 
   // Parse Actions
-  const actions = rawActions.map((row: any[]) => ({
-    id: row[0] || '',
-    meetingId: row[1] || '',
-    teacherId: row[2] || '',
-    teacherName: row[3] || '',
-    subjectId: row[4] || '',
-    subjectName: row[5] || '',
-    classGroupId: row[6] || '',
-    classGroupName: row[7] || '',
-    description: row[8] || '',
-    category: row[9] || 'OUTROS',
-    createdDate: row[10] || new Date().toISOString().split('T')[0],
-    targetMeetingPeriod: row[11] || 'Próxima Quinzena',
-    status: row[12] || 'PENDENTE'
-  })).filter(a => a.id && a.description);
+  const actions = rawActions.map((row: any[], index: number) => {
+    const description = clean(row[8]);
+    const id = clean(row[0]) || (description ? `act-${slugify(description).slice(0, 10)}-${index + 1}` : `act-${index + 1}`);
+
+    return {
+      id,
+      meetingId: clean(row[1]),
+      teacherId: clean(row[2]),
+      teacherName: clean(row[3]),
+      subjectId: clean(row[4]),
+      subjectName: clean(row[5]),
+      classGroupId: clean(row[6]),
+      classGroupName: clean(row[7]),
+      description,
+      category: clean(row[9]) || 'OUTROS',
+      createdDate: clean(row[10]) || new Date().toISOString().split('T')[0],
+      targetMeetingPeriod: clean(row[11]) || 'Próxima Quinzena',
+      status: clean(row[12]) || 'PENDENTE'
+    };
+  }).filter(a => a.description);
 
   // Parse Meetings
-  const meetings = rawMeetings.map((row: any[]) => ({
-    id: row[0] || '',
-    meetingDate: row[1] || '',
-    teacherId: row[2] || '',
-    teacherName: row[3] || '',
-    subjectId: row[4] || '',
-    subjectName: row[5] || '',
-    classGroupId: row[6] || '',
-    classGroupName: row[7] || '',
-    bimester: parseInt(row[8] || '3', 10),
-    periodicity: row[9] || 'QUINZENAL',
-    fortnightPeriod: row[10] || '',
-    primaryReason: row[11] || 'RITMO_ADEQUADO',
-    pedagogicalContextNotes: row[12] || '',
-    topicProgress: [],
-    previousActionsVerification: [],
-    newActions: actions.filter(a => a.meetingId === row[0])
-  })).filter(m => m.id && m.teacherName);
+  const meetings = rawMeetings.map((row: any[], index: number) => {
+    const meetingDate = clean(row[1]);
+    const teacherName = clean(row[3]);
+    const id = clean(row[0]) || `meet-${index + 1}`;
+
+    let topicProgress: any[] = [];
+    try {
+      if (row[15]) {
+        topicProgress = JSON.parse(row[15]);
+      }
+    } catch {}
+
+    let previousActionsVerification: any[] = [];
+    try {
+      if (row[16]) {
+        previousActionsVerification = JSON.parse(row[16]);
+      }
+    } catch {}
+
+    const coordinatorName = clean(row[17]) || 'Coordenação Pedagógica';
+    const primaryReason = clean(row[11]) || 'RITMO_ADEQUADO';
+    const hasDeviation = primaryReason !== 'RITMO_ADEQUADO';
+
+    return {
+      id,
+      meetingDate: meetingDate || new Date().toISOString().split('T')[0],
+      teacherId: clean(row[2]),
+      teacherName,
+      subjectId: clean(row[4]),
+      subjectName: clean(row[5]),
+      classGroupId: clean(row[6]),
+      classGroupName: clean(row[7]),
+      bimester: parseInt(clean(row[8]) || '1', 10) || 1,
+      periodicity: clean(row[9]) || 'QUINZENAL',
+      fortnightPeriod: clean(row[10]),
+      hasDeviation,
+      primaryReason,
+      pedagogicalContextNotes: clean(row[12]),
+      coordinatorName,
+      topicProgress,
+      previousActionsVerification,
+      newActions: actions.filter(a => a.meetingId === id)
+    };
+  }).filter(m => m.teacherName || m.meetingDate);
 
   return {
+    success: true,
     teachers,
     classGroups,
     subjects,

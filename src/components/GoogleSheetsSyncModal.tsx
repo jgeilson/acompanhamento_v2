@@ -75,6 +75,8 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         if (data.isConfigured) {
           setClientEmail(data.clientEmail || '');
           setSpreadsheetId(data.spreadsheetId || '');
+          setConnectionStatus('success');
+          setStatusMessage('Conectado à Planilha Google via variáveis do servidor.');
         } else {
           // Fallback to localStorage
           const savedEmail = localStorage.getItem('gs_client_email') || '';
@@ -140,6 +142,48 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     };
   };
 
+  const executeLoadData = async () => {
+    setIsFetching(true);
+    setSyncResult(null);
+
+    saveCredentialsToLocalStorage();
+
+    try {
+      const res = await fetch('/api/sheets/load-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: getConfigPayload() })
+      });
+
+      const data = await res.json();
+
+      if (data.success || Array.isArray(data.teachers)) {
+        onDataLoaded({
+          teachers: data.teachers,
+          subjects: data.subjects,
+          classGroups: data.classGroups,
+          bimonthlyPlans: data.bimonthlyPlans,
+          meetings: data.meetings,
+          actions: data.actions
+        });
+
+        const profs = data.rawCounts?.teachers ?? (data.teachers?.length || 0);
+        const turmas = data.rawCounts?.classGroups ?? (data.classGroups?.length || 0);
+        const planos = data.rawCounts?.bimonthlyPlans ?? (data.bimonthlyPlans?.length || 0);
+        const reunioes = data.rawCounts?.meetings ?? (data.meetings?.length || 0);
+
+        setSyncResult(`Dados carregados da Planilha Google! ${profs} prof(s), ${turmas} turma(s), ${planos} plano(s) e ${reunioes} reunião(ões) sincronizados com o app.`);
+        setStatusMessage(`Dados importados com sucesso! Abas ativas no app.`);
+      } else {
+        alert(`Erro ao carregar dados da planilha: ${data.error || 'Formato inválido'}`);
+      }
+    } catch (err) {
+      alert('Erro ao comunicar com a Planilha Google para importar dados.');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   const handleTestConnection = async () => {
     setConnectionStatus('testing');
     setStatusMessage('Verificando acesso à Planilha e estruturando abas...');
@@ -159,7 +203,9 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       if (data.success) {
         setConnectionStatus('success');
         setSpreadsheetTitle(data.title || 'Planilha Conectada');
-        setStatusMessage(`Conexão bem-sucedida! Abas ativas no Google Sheets: ${data.tabs?.join(', ')}.`);
+        setStatusMessage(`Conexão confirmada! Carregando dados das abas...`);
+        // Automatically load the data immediately
+        await executeLoadData();
       } else {
         setConnectionStatus('error');
         setStatusMessage(data.error || 'Não foi possível acessar a planilha.');
@@ -208,39 +254,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   };
 
   const handleLoadAllFromSheets = async () => {
-    setIsFetching(true);
-    setSyncResult(null);
-
-    saveCredentialsToLocalStorage();
-
-    try {
-      const res = await fetch('/api/sheets/load-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: getConfigPayload() })
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        onDataLoaded({
-          teachers: data.teachers,
-          subjects: data.subjects,
-          classGroups: data.classGroups,
-          bimonthlyPlans: data.bimonthlyPlans,
-          meetings: data.meetings,
-          actions: data.actions
-        });
-
-        setSyncResult(`Dados carregados da Planilha Google! ${data.rawCounts?.teachers || 0} profs, ${data.rawCounts?.classGroups || 0} turmas, ${data.rawCounts?.bimonthlyPlans || 0} planos, ${data.rawCounts?.meetings || 0} reuniões e ${data.rawCounts?.actions || 0} encaminhamentos aplicados ao aplicativo.`);
-      } else {
-        alert(`Erro ao carregar dados da planilha: ${data.error}`);
-      }
-    } catch (err) {
-      alert('Erro ao comunicar com a Planilha Google para importar dados.');
-    } finally {
-      setIsFetching(false);
-    }
+    await executeLoadData();
   };
 
   if (!isOpen) return null;
