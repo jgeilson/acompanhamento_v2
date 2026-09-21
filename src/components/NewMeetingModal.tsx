@@ -66,8 +66,8 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedClassGroupId, setSelectedClassGroupId] = useState<string>('');
   const [bimester, setBimester] = useState<1 | 2 | 3 | 4>(3);
-  const [periodicity, setPeriodicity] = useState<MeetingPeriodicity>('QUINZENAL');
-  const [fortnightPeriod, setFortnightPeriod] = useState<string>('');
+  const [periodicity, setPeriodicity] = useState<MeetingPeriodicity>('REGULAR');
+  const [fortnightPeriod, setFortnightPeriod] = useState<string>('Encontro Regular #1');
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [coordinatorName, setCoordinatorName] = useState<string>(() => {
     return localStorage.getItem('default_coordinator_name') || DEFAULT_COORDINATOR_NAME;
@@ -461,12 +461,16 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                     onChange={(e) => {
                       const newP = e.target.value as MeetingPeriodicity;
                       setPeriodicity(newP);
-                      if (newP === 'SEMANAL' && fortnightPeriod.includes('Quinzena')) {
+                      if (newP === 'SEMANAL') {
                         setFortnightPeriod('Semana 38');
-                      } else if (newP === 'MENSAL' && fortnightPeriod.includes('Quinzena')) {
+                      } else if (newP === 'MENSAL') {
                         setFortnightPeriod('Mês de Outubro');
+                      } else if (newP === 'QUINZENAL') {
+                        setFortnightPeriod('2ª Quinzena');
                       } else if (newP === 'EXTRAORDINARIA') {
                         setFortnightPeriod('Reunião Extraordinária #1');
+                      } else if (newP === 'REGULAR') {
+                        setFortnightPeriod('Encontro Regular #1');
                       }
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:bg-white font-semibold"
@@ -484,7 +488,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                     type="text"
                     value={fortnightPeriod}
                     onChange={(e) => setFortnightPeriod(e.target.value)}
-                    placeholder="Ex: 2ª Quinzena de Setembro, Semana 38, Mês de Outubro..."
+                    placeholder="Ex: Encontro #1, Semana 38, Mês de Outubro, Quinzena 2..."
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:bg-white"
                   />
                   <p className="text-[11px] text-slate-500 italic">

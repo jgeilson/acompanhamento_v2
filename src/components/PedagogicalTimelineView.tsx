@@ -109,7 +109,8 @@ export const PedagogicalTimelineView: React.FC<PedagogicalTimelineViewProps> = (
           
           {timelineMeetings.map((meeting, index) => {
             const reasonObj = PEDAGOGICAL_REASON_OPTIONS.find(o => o.id === meeting.primaryReason);
-            const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === (meeting.periodicity || 'QUINZENAL'));
+            const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === meeting.periodicity) ||
+              MEETING_PERIODICITY_OPTIONS.find(o => o.id === 'REGULAR');
 
             return (
               <div key={meeting.id} className="relative z-10 pl-12 sm:pl-16 space-y-3">
@@ -126,7 +127,7 @@ export const PedagogicalTimelineView: React.FC<PedagogicalTimelineViewProps> = (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {periodicityObj && meeting.periodicity && meeting.periodicity !== 'QUINZENAL' && (
+                        {periodicityObj && (
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${periodicityObj.badgeBg}`}>
                             {periodicityObj.label}
                           </span>

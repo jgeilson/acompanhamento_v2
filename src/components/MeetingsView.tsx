@@ -61,7 +61,12 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
     if (selectedTeacherFilter && m.teacherId !== selectedTeacherFilter) return false;
     if (selectedSubjectFilter && m.subjectId !== selectedSubjectFilter) return false;
     if (selectedClassFilter && m.classGroupId !== selectedClassFilter) return false;
-    if (selectedPeriodicityFilter && (m.periodicity || 'QUINZENAL') !== selectedPeriodicityFilter) return false;
+    if (selectedPeriodicityFilter) {
+      const p = m.periodicity || 'REGULAR';
+      if (p !== selectedPeriodicityFilter && (selectedPeriodicityFilter === 'REGULAR' ? p !== 'QUINZENAL' : true)) {
+        return false;
+      }
+    }
 
     return true;
   });
@@ -202,7 +207,8 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredMeetings.map((meeting) => {
             const reasonObj = PEDAGOGICAL_REASON_OPTIONS.find(o => o.id === meeting.primaryReason);
-            const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === (meeting.periodicity || 'QUINZENAL'));
+            const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === meeting.periodicity) ||
+              MEETING_PERIODICITY_OPTIONS.find(o => o.id === 'REGULAR');
             const completedCount = meeting.topicProgress.filter(t => t.status === 'CONCLUIDO').length;
             const totalTopics = meeting.topicProgress.length;
 
@@ -215,7 +221,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
                   {/* Top Bar */}
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      {periodicityObj && meeting.periodicity && meeting.periodicity !== 'QUINZENAL' && (
+                      {periodicityObj && (
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${periodicityObj.badgeBg}`}>
                           {periodicityObj.label}
                         </span>

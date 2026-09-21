@@ -28,7 +28,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
   if (!meeting) return null;
 
   const reasonObj = PEDAGOGICAL_REASON_OPTIONS.find(o => o.id === meeting.primaryReason);
-  const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === (meeting.periodicity || 'QUINZENAL'));
+  const periodicityObj = MEETING_PERIODICITY_OPTIONS.find(o => o.id === meeting.periodicity) || 
+    MEETING_PERIODICITY_OPTIONS.find(o => o.id === 'REGULAR');
 
   const handlePrint = () => {
     window.print();
@@ -45,7 +46,7 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
               <span className="bg-amber-500/20 text-amber-300 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full border border-amber-400/30">
                 Registro Oficial de Reunião
               </span>
-              {periodicityObj && meeting.periodicity && meeting.periodicity !== 'QUINZENAL' && (
+              {periodicityObj && (
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${periodicityObj.badgeBg}`}>
                   {periodicityObj.label}
                 </span>

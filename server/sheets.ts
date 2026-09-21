@@ -264,17 +264,17 @@ async function ensureSheetHeaders(sheets: any, spreadsheetId: string) {
     {
       tab: 'Planejamento',
       range: 'Planejamento!A1:M1',
-      values: [['ID Planejamento', 'ID Prof', 'ID Disciplina', 'ID Turma', 'Bimestre', 'Ano', 'Quinzena', 'Título Período', 'ID Tópico', 'Título Tópico', 'Código BNCC', 'Carga Horária (h)', 'Unidade Temática']]
+      values: [['ID Planejamento', 'ID Prof', 'ID Disciplina', 'ID Turma', 'Bimestre', 'Ano', 'Nº Período', 'Título Período', 'ID Tópico', 'Título Tópico', 'Código BNCC', 'Carga Horária (h)', 'Unidade Temática']]
     },
     {
       tab: 'Reuniões',
       range: 'Reuniões!A1:R1',
-      values: [['ID Reunião', 'Data', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Bimestre', 'Periodicidade', 'Quinzena', 'Razão Principal', 'Contexto Pedagógico', 'Tópicos Concluídos', 'Qtd Encaminhamentos', 'Progresso Tópicos JSON', 'Verificação Anterior JSON', 'Coordenador']]
+      values: [['ID Reunião', 'Data', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Bimestre', 'Periodicidade', 'Período Referência', 'Razão Principal', 'Contexto Pedagógico', 'Tópicos Concluídos', 'Qtd Encaminhamentos', 'Progresso Tópicos JSON', 'Verificação Anterior JSON', 'Coordenador']]
     },
     {
       tab: 'Encaminhamentos',
       range: 'Encaminhamentos!A1:M1',
-      values: [['ID Encaminhamento', 'ID Reunião', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Descrição da Ação', 'Categoria', 'Data Criação', 'Previsão Quinzena', 'Status']]
+      values: [['ID Encaminhamento', 'ID Reunião', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Descrição da Ação', 'Categoria', 'Data Criação', 'Previsão Retomada', 'Status']]
     }
   ];
 
@@ -412,7 +412,7 @@ export async function syncAllToSheets(data: {
       m.classGroupId,
       m.classGroupName,
       m.bimester,
-      m.periodicity || 'QUINZENAL',
+      m.periodicity || 'REGULAR',
       m.fortnightPeriod,
       m.primaryReason || (m.pedagogicalReasons || []).join(', '),
       m.pedagogicalContextNotes,
@@ -476,7 +476,7 @@ export async function appendMeetingToSheet(meeting: any, config?: GoogleSheetsCo
     meeting.classGroupId,
     meeting.classGroupName,
     meeting.bimester,
-    meeting.periodicity || 'QUINZENAL',
+    meeting.periodicity || 'REGULAR',
     meeting.fortnightPeriod,
     meeting.primaryReason || (meeting.pedagogicalReasons || []).join(', '),
     meeting.pedagogicalContextNotes,
@@ -575,7 +575,7 @@ export async function appendMeetingsToSheet(meetings: any[], config?: GoogleShee
     m.classGroupId,
     m.classGroupName,
     m.bimester,
-    m.periodicity || 'QUINZENAL',
+    m.periodicity || 'REGULAR',
     m.fortnightPeriod,
     m.primaryReason || (m.pedagogicalReasons || []).join(', '),
     m.pedagogicalContextNotes,
@@ -720,7 +720,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
 
     const plan = plansMap.get(planId);
     const fortnightNum = parseInt(clean(row[6]) || '1', 10) || 1;
-    const periodTitle = clean(row[7]) || `${fortnightNum}ª Quinzena`;
+    const periodTitle = clean(row[7]) || `Período #${fortnightNum}`;
 
     if (!plan.periodsMap.has(fortnightNum)) {
       plan.periodsMap.set(fortnightNum, {
@@ -772,7 +772,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
       description,
       category: clean(row[9]) || 'OUTROS',
       createdDate: clean(row[10]) || new Date().toISOString().split('T')[0],
-      targetMeetingPeriod: clean(row[11]) || 'Próxima Quinzena',
+      targetMeetingPeriod: clean(row[11]) || 'Próxima Reunião',
       status: clean(row[12]) || 'PENDENTE'
     };
   }).filter(a => a.description);
@@ -811,7 +811,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
       classGroupId: clean(row[6]),
       classGroupName: clean(row[7]),
       bimester: parseInt(clean(row[8]) || '1', 10) || 1,
-      periodicity: clean(row[9]) || 'QUINZENAL',
+      periodicity: clean(row[9]) || 'REGULAR',
       fortnightPeriod: clean(row[10]),
       hasDeviation,
       primaryReason,

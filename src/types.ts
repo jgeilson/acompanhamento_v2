@@ -32,8 +32,8 @@ export interface PlannedTopic {
 }
 
 export interface BimonthlyPeriodPlan {
-  fortnightNumber: number; // 1, 2, 3, 4 no bimestre
-  periodTitle: string;     // Ex: "1ª Quinzena de Setembro (Semanas 1 e 2)"
+  fortnightNumber: number; // Número do período (1, 2, 3, 4... no bimestre)
+  periodTitle: string;     // Ex: "Período 1", "Semanas 1 e 2", "1ª Quinzena"
   topics: PlannedTopic[];
 }
 
@@ -156,7 +156,7 @@ export interface PedagogicalAction {
 }
 
 // Periodicidade / Frequência da Reunião de Acompanhamento
-export type MeetingPeriodicity = 'QUINZENAL' | 'SEMANAL' | 'MENSAL' | 'EXTRAORDINARIA' | 'OUTRA';
+export type MeetingPeriodicity = 'REGULAR' | 'QUINZENAL' | 'SEMANAL' | 'MENSAL' | 'EXTRAORDINARIA' | 'OUTRA';
 
 export interface MeetingPeriodicityOption {
   id: MeetingPeriodicity;
@@ -165,7 +165,8 @@ export interface MeetingPeriodicityOption {
 }
 
 export const MEETING_PERIODICITY_OPTIONS: MeetingPeriodicityOption[] = [
-  { id: 'QUINZENAL', label: 'Acompanhamento Regular', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  { id: 'REGULAR', label: 'Acompanhamento Regular', badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-300' },
+  { id: 'QUINZENAL', label: 'Quinzenal', badgeBg: 'bg-purple-100 text-purple-800 border-purple-300' },
   { id: 'SEMANAL', label: 'Semanal', badgeBg: 'bg-teal-100 text-teal-800 border-teal-300' },
   { id: 'MENSAL', label: 'Mensal', badgeBg: 'bg-sky-100 text-sky-800 border-sky-300' },
   { id: 'EXTRAORDINARIA', label: 'Extraordinária / Eventual', badgeBg: 'bg-amber-100 text-amber-800 border-amber-300' },
@@ -182,15 +183,15 @@ export interface BiweeklyMeeting {
   classGroupId: string;
   classGroupName: string;
   bimester: 1 | 2 | 3 | 4;
-  periodicity?: MeetingPeriodicity; // Quinzenal, Semanal, Mensal, Extraordinária, Outra
-  fortnightPeriod: string; // Referência do período (Ex: "2ª Quinzena de Setembro", "Semana 38", "Outubro - Encontro 1")
+  periodicity?: MeetingPeriodicity; // Regular, Quinzenal, Semanal, Mensal, Extraordinária, Outra
+  fortnightPeriod: string; // Referência do período (Ex: "Encontro 1", "Semana 38", "Mês de Outubro", "2ª Quinzena")
   meetingDate: string;    // YYYY-MM-DD
   coordinatorName: string;
   
   // 1. Acompanhamento de Encaminhamentos Anteriores
   previousActionsVerification: PreviousActionVerification[];
 
-  // 2. Progresso de Conteúdos da Quinzena
+  // 2. Progresso de Conteúdos do Período
   topicProgress: TopicProgressItem[];
 
   // 3. Contexto Pedagógico do Desvio / Progresso
