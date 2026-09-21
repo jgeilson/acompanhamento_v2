@@ -70,7 +70,13 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   useEffect(() => {
     // Load existing env status or saved credentials from localStorage
     fetch('/api/sheets/status')
-      .then(res => res.json())
+      .then(async res => {
+        const contentType = res.headers.get('content-type') || '';
+        if (!res.ok || contentType.includes('text/html')) {
+          throw new Error('Endpoint de API não ativo no servidor (retornou HTML ou 404).');
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.isConfigured) {
           setClientEmail(data.clientEmail || '');
@@ -88,7 +94,20 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
           if (savedSheetId) setSpreadsheetId(savedSheetId);
         }
       })
-      .catch(() => {});
+      .catch((err: any) => {
+        // Fallback to localStorage
+        const savedEmail = localStorage.getItem('gs_client_email') || '';
+        const savedKey = localStorage.getItem('gs_private_key') || '';
+        const savedSheetId = localStorage.getItem('gs_spreadsheet_id') || '';
+
+        if (savedEmail) setClientEmail(savedEmail);
+        if (savedKey) setPrivateKey(savedKey);
+        if (savedSheetId) setSpreadsheetId(savedSheetId);
+
+        if (err?.message?.includes('HTML')) {
+          setStatusMessage('Aviso: As rotas de API do Vercel ainda não estão ativas neste deploy.');
+        }
+      });
   }, []);
 
   const handleSpreadsheetIdChange = (val: string) => {
@@ -155,6 +174,12 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         body: JSON.stringify({ config: getConfigPayload() })
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || contentType.includes('text/html')) {
+        alert('O servidor Vercel não possui as funções de API ativas (retornou erro ou HTML). Certifique-se de sincronizar com o GitHub os novos arquivos (vercel.json e pasta api/) para que o Vercel ative o backend.');
+        return;
+      }
+
       const data = await res.json();
 
       if (data.success || Array.isArray(data.teachers)) {
@@ -177,8 +202,8 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       } else {
         alert(`Erro ao carregar dados da planilha: ${data.error || 'Formato inválido'}`);
       }
-    } catch (err) {
-      alert('Erro ao comunicar com a Planilha Google para importar dados.');
+    } catch (err: any) {
+      alert(`Erro de comunicação com o servidor: ${err.message || 'Verifique a conexão.'}`);
     } finally {
       setIsFetching(false);
     }
@@ -198,6 +223,13 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
         body: JSON.stringify(getConfigPayload())
       });
 
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || contentType.includes('text/html')) {
+        setConnectionStatus('error');
+        setStatusMessage('As rotas de backend (/api) não responderam no Vercel. Envie as alterações (vercel.json e pasta api/) para o GitHub.');
+        return;
+      }
+
       const data = await res.json();
 
       if (data.success) {
@@ -212,7 +244,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
       }
     } catch (err: any) {
       setConnectionStatus('error');
-      setStatusMessage('Falha ao comunicar com o servidor.');
+      setStatusMessage(`Falha ao comunicar com o servidor: ${err.message}`);
     }
   };
 
