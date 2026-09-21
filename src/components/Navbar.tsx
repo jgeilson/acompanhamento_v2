@@ -10,7 +10,6 @@ import {
   Sparkles,
   FileText,
   Clock,
-  FileSpreadsheet,
   RefreshCw
 } from 'lucide-react';
 import { ActiveTab } from '../types';
@@ -20,7 +19,6 @@ interface NavbarProps {
   setActiveTab: (tab: ActiveTab) => void;
   pendingActionsCount: number;
   onOpenNewMeeting: () => void;
-  onOpenSheetsSync?: () => void;
   isSheetsConfigured?: boolean;
   isSyncing?: boolean;
   onQuickReload?: () => void;
@@ -31,7 +29,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   pendingActionsCount,
   onOpenNewMeeting,
-  onOpenSheetsSync,
   isSheetsConfigured = false,
   isSyncing = false,
   onQuickReload
@@ -57,45 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {onQuickReload && isSheetsConfigured && (
-              <button
-                onClick={onQuickReload}
-                disabled={isSyncing}
-                title="Recarregar dados atualizados da Planilha Google"
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs px-2.5 py-2 rounded-xl transition-all flex items-center gap-1.5 border border-slate-700 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : 'text-slate-400'}`} />
-                <span className="hidden md:inline">{isSyncing ? 'Atualizando...' : 'Recarregar'}</span>
-              </button>
-            )}
-
-            {onOpenSheetsSync && (
-              <button
-                onClick={onOpenSheetsSync}
-                className={`font-semibold text-xs px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 border ${
-                  isSheetsConfigured 
-                    ? 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/40' 
-                    : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
-                }`}
-              >
-                <FileSpreadsheet className={`w-4 h-4 ${isSheetsConfigured ? 'text-emerald-400' : 'text-amber-400'}`} />
-                <span className="hidden sm:inline">
-                  {isSheetsConfigured ? 'Planilha Conectada' : 'Conectar Planilha'}
-                </span>
-                <span className={`w-2 h-2 rounded-full ${isSheetsConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              </button>
-            )}
-
-            <button
-              onClick={onOpenNewMeeting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Nova Reunião</span>
-            </button>
-          </div>
+          
 
         </div>
 

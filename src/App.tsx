@@ -7,7 +7,6 @@ import { PedagogicalTimelineView } from './components/PedagogicalTimelineView';
 import { PedagogicalActionsView } from './components/PedagogicalActionsView';
 import { NewMeetingModal } from './components/NewMeetingModal';
 import { MeetingDetailModal } from './components/MeetingDetailModal';
-import { GoogleSheetsSyncModal } from './components/GoogleSheetsSyncModal';
 
 import { 
   ActiveTab, 
@@ -49,7 +48,6 @@ export default function App() {
   const [isNewMeetingModalOpen, setIsNewMeetingModalOpen] = useState<boolean>(false);
   const [selectedDetailMeeting, setSelectedDetailMeeting] = useState<BiweeklyMeeting | null>(null);
   const [initialTeacherForModal, setInitialTeacherForModal] = useState<string | undefined>(undefined);
-  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
 
   const getSheetsConfig = () => ({
     clientEmail: localStorage.getItem('gs_client_email') || undefined,
@@ -240,7 +238,6 @@ export default function App() {
           setInitialTeacherForModal(undefined);
           setIsNewMeetingModalOpen(true);
         }}
-        onOpenSheetsSync={() => setIsSheetsModalOpen(true)}
         isSheetsConfigured={isSheetsConfigured}
         isSyncing={isSyncing}
         onQuickReload={() => loadDataFromSheets(false)}
@@ -279,7 +276,6 @@ export default function App() {
             }}
             onNavigateTab={setActiveTab}
             onSelectMeetingDetail={setSelectedDetailMeeting}
-            onOpenSheetsSync={() => setIsSheetsModalOpen(true)}
             isSheetsConfigured={isSheetsConfigured}
           />
         )}
@@ -340,20 +336,6 @@ export default function App() {
         <MeetingDetailModal
           meeting={selectedDetailMeeting}
           onClose={() => setSelectedDetailMeeting(null)}
-        />
-      )}
-
-      {isSheetsModalOpen && (
-        <GoogleSheetsSyncModal
-          isOpen={isSheetsModalOpen}
-          onClose={() => setIsSheetsModalOpen(false)}
-          teachers={teachers}
-          subjects={subjects}
-          classGroups={classGroups}
-          bimonthlyPlans={bimonthlyPlans}
-          meetings={meetings}
-          actions={actions}
-          onDataLoaded={handleDataLoadedFromSheets}
         />
       )}
 
