@@ -13,21 +13,35 @@ export function cleanPrivateKey(rawKey: string): string {
   if (!rawKey) return '';
   let key = rawKey.trim();
 
-  // If key is wrapped in quotes, unwrap it
-  if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
-    key = key.substring(1, key.length - 1);
+  // If key is wrapped in quotes or escaped quotes, unwrap it
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'")) ||
+    (key.startsWith('`') && key.endsWith('`'))
+  ) {
+    key = key.substring(1, key.length - 1).trim();
   }
 
-  // Replace escaped newlines and carriage returns
-  key = key
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '');
+  // Handle double escaped newlines (e.g. \\n from Vercel env var or JSON stringification)
+  key = key.replace(/\\\\n/g, '\n');
+  key = key.replace(/\\n/g, '\n');
+  key = key.replace(/\\r/g, '');
+  key = key.replace(/\r\n/g, '\n');
+  key = key.replace(/\r/g, '');
 
   key = key.trim();
 
-  // If key doesn't have BEGIN/END headers, attempt to wrap it
+  // If key was Base64 encoded without headers, try decoding
+  if (!key.includes('BEGIN PRIVATE KEY')) {
+    try {
+      const decoded = Buffer.from(key, 'base64').toString('utf-8');
+      if (decoded.includes('BEGIN PRIVATE KEY')) {
+        key = decoded.trim();
+      }
+    } catch {}
+  }
+
+  // If key still doesn't have BEGIN/END headers, attempt to wrap it
   if (!key.includes('BEGIN PRIVATE KEY')) {
     const base64Clean = key.replace(/[\s\n\r]/g, '');
     const lines = base64Clean.match(/.{1,64}/g) || [base64Clean];
@@ -62,33 +76,67 @@ export function cleanPrivateKey(rawKey: string): string {
  * Extract credentials from config or process.env, handling full JSON pastes and URL inputs.
  */
 export function extractCredentials(config?: GoogleSheetsConfig) {
-  let email = config?.clientEmail || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '';
-  let key = config?.privateKey || process.env.GOOGLE_PRIVATE_KEY || '';
-  let spreadsheetId = config?.spreadsheetId || process.env.GOOGLE_SHEET_ID || '';
+  let email =
+    config?.clientEmail ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
+    process.env.GOOGLE_CLIENT_EMAIL ||
+    process.env.CLIENT_EMAIL ||
+    process.env.GOOGLE_EMAIL ||
+    '';
+
+  let key =
+    config?.privateKey ||
+    process.env.GOOGLE_PRIVATE_KEY ||
+    process.env.PRIVATE_KEY ||
+    '';
+
+  let spreadsheetId =
+    config?.spreadsheetId ||
+    process.env.GOOGLE_SHEET_ID ||
+    process.env.GOOGLE_SPREADSHEET_ID ||
+    process.env.SPREADSHEET_ID ||
+    process.env.SHEET_ID ||
+    '';
+
+  const rawEnvCreds =
+    process.env.GOOGLE_CREDENTIALS ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    '';
 
   // Helper to parse JSON string if user pasted full credentials JSON
   const tryParseJson = (str: string) => {
     if (!str) return null;
     const trimmed = str.trim();
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('"{') && trimmed.endsWith('}"'))) {
       try {
-        return JSON.parse(trimmed);
+        const unquoted = trimmed.startsWith('"{') ? JSON.parse(trimmed) : trimmed;
+        return typeof unquoted === 'object' ? unquoted : JSON.parse(unquoted);
       } catch {
         return null;
       }
     }
+    // Also test base64-encoded JSON
+    try {
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf-8').trim();
+      if (decoded.startsWith('{') && decoded.endsWith('}')) {
+        return JSON.parse(decoded);
+      }
+    } catch {}
     return null;
   };
 
   const parsedKey = tryParseJson(key);
   const parsedEmail = tryParseJson(email);
   const parsedSheet = tryParseJson(spreadsheetId);
-  const json = parsedKey || parsedEmail || parsedSheet;
+  const parsedEnv = tryParseJson(rawEnvCreds);
+  const json = parsedKey || parsedEmail || parsedSheet || parsedEnv;
 
   if (json) {
     if (json.client_email) email = json.client_email;
     if (json.private_key) key = json.private_key;
-    if (json.spreadsheet_id) spreadsheetId = json.spreadsheet_id;
+    if (json.spreadsheet_id || json.sheet_id) spreadsheetId = json.spreadsheet_id || json.sheet_id;
   }
 
   // Extract ID if full Google Sheets URL was pasted
@@ -109,6 +157,32 @@ export function extractCredentials(config?: GoogleSheetsConfig) {
   const formattedKey = cleanPrivateKey(key);
 
   return { email, key: formattedKey, spreadsheetId };
+}
+
+/**
+ * Safe version that extracts credentials without throwing, useful for status checks.
+ */
+export function extractCredentialsSafely(config?: GoogleSheetsConfig) {
+  try {
+    return extractCredentials(config);
+  } catch {
+    // Collect whatever partial values are present
+    let email =
+      config?.clientEmail ||
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ||
+      process.env.GOOGLE_CLIENT_EMAIL ||
+      process.env.CLIENT_EMAIL ||
+      process.env.GOOGLE_EMAIL ||
+      '';
+    let spreadsheetId =
+      config?.spreadsheetId ||
+      process.env.GOOGLE_SHEET_ID ||
+      process.env.GOOGLE_SPREADSHEET_ID ||
+      process.env.SPREADSHEET_ID ||
+      process.env.SHEET_ID ||
+      '';
+    return { email: email.trim(), key: '', spreadsheetId: spreadsheetId.trim() };
+  }
 }
 
 export function getSheetsClient(config?: GoogleSheetsConfig) {
