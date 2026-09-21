@@ -284,7 +284,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         });
       }
     } catch (err) {
-      const fallbackText = `Agendar momentos curtos de revisão contínua antes de introduzir o próximo assunto e acompanhar os resultados na próxima quinzena.`;
+      const fallbackText = `Agendar momentos curtos de revisão contínua antes de introduzir o próximo assunto e acompanhar os resultados na próxima reunião.`;
       setNewActionsList(prev => {
         const updated = [...prev];
         if (updated.length > 0) {
@@ -340,7 +340,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
       hasDeviation: selectedReasons.some(r => r !== 'RITMO_ADEQUADO'),
       primaryReason: selectedReasons[0] || 'RITMO_ADEQUADO',
       pedagogicalReasons: selectedReasons,
-      pedagogicalContextNotes: pedagogicalContextNotes || 'Acompanhamento quinzenal realizado em ritmo normal.',
+      pedagogicalContextNotes: pedagogicalContextNotes || 'Acompanhamento realizado em ritmo normal.',
       newActions: createdActions
     };
 
