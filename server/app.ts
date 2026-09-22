@@ -15,6 +15,7 @@ import {
   syncAllToSheets,
   readAllFromSheets,
   extractCredentialsSafely,
+  getServerSheetsStatus,
 } from './sheets.js';
 
 dotenv.config();
@@ -145,18 +146,16 @@ Retorne um JSON com:
 // Google Sheets Routes
 apiRouter.get('/sheets/status', (req, res) => {
   try {
-    const creds = extractCredentialsSafely();
-    const isConfigured = Boolean(creds.email && creds.key && creds.spreadsheetId);
-    return res.json({
-      isConfigured,
-      clientEmail: creds.email || '',
-      spreadsheetId: creds.spreadsheetId || '',
-    });
+    const status = getServerSheetsStatus();
+    return res.json(status);
   } catch (err: any) {
     return res.json({
       isConfigured: false,
-      clientEmail: '',
-      spreadsheetId: '',
+      hasEmail: false,
+      hasKey: false,
+      hasSheetId: false,
+      clientEmailMasked: '',
+      spreadsheetIdMasked: '',
       error: err.message,
     });
   }
@@ -165,7 +164,12 @@ apiRouter.get('/sheets/status', (req, res) => {
 apiRouter.post('/sheets/test-connection', async (req, res) => {
   try {
     const { clientEmail, privateKey, spreadsheetId } = req.body || {};
-    const result = await testAndSetupSheets({ clientEmail, privateKey, spreadsheetId });
+    // Test with server credentials by default, or with override if provided
+    const result = await testAndSetupSheets(
+      clientEmail && privateKey && spreadsheetId
+        ? { clientEmail, privateKey, spreadsheetId }
+        : undefined
+    );
     return res.json(result);
   } catch (error: any) {
     console.error('Erro na conexão com Google Sheets:', error);

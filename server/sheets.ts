@@ -185,6 +185,61 @@ export function extractCredentialsSafely(config?: GoogleSheetsConfig) {
   }
 }
 
+/**
+ * Returns security-safe status of server-side Google Sheets configuration without exposing private keys.
+ */
+export function getServerSheetsStatus() {
+  const email = (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_CLIENT_EMAIL || process.env.CLIENT_EMAIL || '').trim();
+  const rawKey = (process.env.GOOGLE_PRIVATE_KEY || process.env.PRIVATE_KEY || '').trim();
+  let spreadsheetId = (process.env.GOOGLE_SHEET_ID || process.env.GOOGLE_SPREADSHEET_ID || process.env.SPREADSHEET_ID || '').trim();
+
+  if (spreadsheetId.includes('/spreadsheets/d/')) {
+    const match = spreadsheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+      spreadsheetId = match[1];
+    }
+  }
+
+  const hasEmail = Boolean(email);
+  const hasKey = Boolean(rawKey && rawKey.length > 20);
+  const hasSheetId = Boolean(spreadsheetId);
+  const isConfigured = hasEmail && hasKey && hasSheetId;
+
+  let clientEmailMasked = '';
+  if (hasEmail) {
+    const parts = email.split('@');
+    if (parts.length === 2) {
+      const name = parts[0];
+      const domain = parts[1];
+      const maskedName = name.length > 4 ? `${name.slice(0, 4)}***` : `${name}***`;
+      clientEmailMasked = `${maskedName}@${domain}`;
+    } else {
+      clientEmailMasked = '***@***';
+    }
+  }
+
+  let spreadsheetIdMasked = '';
+  if (hasSheetId) {
+    if (spreadsheetId.length > 8) {
+      spreadsheetIdMasked = `${spreadsheetId.slice(0, 4)}...${spreadsheetId.slice(-4)}`;
+    } else {
+      spreadsheetIdMasked = '***';
+    }
+  }
+
+  return {
+    isConfigured,
+    hasEmail,
+    hasKey,
+    hasSheetId,
+    clientEmailMasked,
+    spreadsheetIdMasked,
+    spreadsheetId: hasSheetId ? spreadsheetId : '',
+    spreadsheetUrl: hasSheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}` : '',
+    securityModel: 'SERVER_ONLY'
+  };
+}
+
 export function getSheetsClient(config?: GoogleSheetsConfig) {
   const { email, key, spreadsheetId } = extractCredentials(config);
 

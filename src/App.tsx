@@ -8,6 +8,7 @@ import { PedagogicalActionsView } from './components/PedagogicalActionsView';
 import { NewMeetingModal } from './components/NewMeetingModal';
 import { MeetingDetailModal } from './components/MeetingDetailModal';
 import { CadastrosView } from './components/CadastrosView';
+import { GoogleSheetsSyncModal } from './components/GoogleSheetsSyncModal';
 
 import { 
   ActiveTab, 
@@ -66,14 +67,9 @@ export default function App() {
 
   // Modals state
   const [isNewMeetingModalOpen, setIsNewMeetingModalOpen] = useState<boolean>(false);
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
   const [selectedDetailMeeting, setSelectedDetailMeeting] = useState<BiweeklyMeeting | null>(null);
   const [initialTeacherForModal, setInitialTeacherForModal] = useState<string | undefined>(undefined);
-
-  const getSheetsConfig = () => ({
-    clientEmail: localStorage.getItem('gs_client_email') || undefined,
-    privateKey: localStorage.getItem('gs_private_key') || undefined,
-    spreadsheetId: localStorage.getItem('gs_spreadsheet_id') || undefined
-  });
 
   const showFeedback = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setSyncFeedback({ message, type });
@@ -84,14 +80,13 @@ export default function App() {
 
   // Function to load all data from Google Sheets
   const loadDataFromSheets = async (silent = false) => {
-    const config = getSheetsConfig();
     if (!silent) setIsSyncing(true);
 
     try {
       const res = await fetch('/api/sheets/load-all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config })
+        body: JSON.stringify({})
       });
       const data = await res.json();
 
@@ -159,8 +154,6 @@ export default function App() {
     currentMeetings: BiweeklyMeeting[],
     currentActions: PedagogicalAction[]
   ) => {
-    const config = getSheetsConfig();
-
     fetch('/api/sheets/sync-all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -172,8 +165,7 @@ export default function App() {
           bimonthlyPlans: currentPlans,
           meetings: currentMeetings,
           actions: currentActions
-        },
-        config
+        }
       })
     })
       .then(res => res.json())
@@ -185,13 +177,18 @@ export default function App() {
       .catch(() => {});
   };
 
-  // Check connection status and auto-load on initial mount
+  // Check connection status and auto-load on initial mount, purging any legacy browser credentials
   React.useEffect(() => {
+    // Purge any legacy credentials from client browser localStorage for security
+    try {
+      localStorage.removeItem('gs_private_key');
+      localStorage.removeItem('gs_client_email');
+    } catch {}
+
     fetch('/api/sheets/status')
       .then(res => res.json())
       .then(status => {
-        const hasLocalConfig = Boolean(localStorage.getItem('gs_spreadsheet_id'));
-        const configured = status.isConfigured || hasLocalConfig;
+        const configured = Boolean(status.isConfigured);
         setIsSheetsConfigured(configured);
 
         if (configured) {
@@ -214,14 +211,12 @@ export default function App() {
     localStorage.setItem('local_meetings', JSON.stringify(updatedMeetings));
     localStorage.setItem('local_actions', JSON.stringify(updatedActions));
 
-    const config = getSheetsConfig();
-
     // Try granular append first
     try {
       const res = await fetch('/api/sheets/save-meeting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meeting: newMeeting, config })
+        body: JSON.stringify({ meeting: newMeeting })
       });
       const data = await res.json();
       if (data.success) {
@@ -249,12 +244,11 @@ export default function App() {
     setTeachers(next);
     localStorage.setItem('local_teachers', JSON.stringify(next));
 
-    const config = getSheetsConfig();
     try {
       const res = await fetch('/api/sheets/save-teacher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher: newTeacher, config })
+        body: JSON.stringify({ teacher: newTeacher })
       });
       const data = await res.json();
       if (data.success) {
@@ -292,12 +286,11 @@ export default function App() {
     setClassGroups(next);
     localStorage.setItem('local_classes', JSON.stringify(next));
 
-    const config = getSheetsConfig();
     try {
       const res = await fetch('/api/sheets/save-class', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classGroup: newClass, config })
+        body: JSON.stringify({ classGroup: newClass })
       });
       const data = await res.json();
       if (data.success) {
@@ -335,12 +328,11 @@ export default function App() {
     setSubjects(next);
     localStorage.setItem('local_subjects', JSON.stringify(next));
 
-    const config = getSheetsConfig();
     try {
       const res = await fetch('/api/sheets/save-subject', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: newSubject, config })
+        body: JSON.stringify({ subject: newSubject })
       });
       const data = await res.json();
       if (data.success) {
@@ -378,12 +370,11 @@ export default function App() {
     setActions(next);
     localStorage.setItem('local_actions', JSON.stringify(next));
 
-    const config = getSheetsConfig();
     try {
       const res = await fetch('/api/sheets/save-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: newAction, config })
+        body: JSON.stringify({ action: newAction })
       });
       const data = await res.json();
       if (data.success) {
@@ -422,14 +413,12 @@ export default function App() {
     setBimonthlyPlans(next);
     localStorage.setItem('local_plans', JSON.stringify(next));
 
-    const config = getSheetsConfig();
-
     if (isNew) {
       try {
         const res = await fetch('/api/sheets/save-plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan: newPlan, config })
+          body: JSON.stringify({ plan: newPlan })
         });
         const data = await res.json();
         if (data.success) {
@@ -482,13 +471,11 @@ export default function App() {
     setActions(updatedActions);
     localStorage.setItem('local_actions', JSON.stringify(updatedActions));
 
-    const config = getSheetsConfig();
-
     try {
       const res = await fetch('/api/sheets/update-action-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId, newStatus, config })
+        body: JSON.stringify({ actionId, newStatus })
       });
       const data = await res.json();
       if (data.success) {
@@ -535,6 +522,7 @@ export default function App() {
         isSheetsConfigured={isSheetsConfigured}
         isSyncing={isSyncing}
         onQuickReload={() => loadDataFromSheets(false)}
+        onOpenSheetsSync={() => setIsSheetsModalOpen(true)}
         appSettings={appSettings}
       />
 
@@ -659,6 +647,20 @@ export default function App() {
           meeting={selectedDetailMeeting}
           onClose={() => setSelectedDetailMeeting(null)}
           onDeleteMeeting={handleDeleteMeeting}
+        />
+      )}
+
+      {isSheetsModalOpen && (
+        <GoogleSheetsSyncModal
+          isOpen={isSheetsModalOpen}
+          onClose={() => setIsSheetsModalOpen(false)}
+          teachers={teachers}
+          subjects={subjects}
+          classGroups={classGroups}
+          bimonthlyPlans={bimonthlyPlans}
+          meetings={meetings}
+          actions={actions}
+          onDataLoaded={handleDataLoadedFromSheets}
         />
       )}
 
