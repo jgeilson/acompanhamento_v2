@@ -154,9 +154,6 @@ export const PedagogicalActionsView: React.FC<PedagogicalActionsViewProps> = ({
             <CheckSquare className="w-6 h-6 text-amber-400" />
             <span>Encaminhamentos Pedagógicos</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Acompanhe, crie e atualize as ações pactuadas nos encontros pedagógicos.
-          </p>
         </div>
 
         <div className="flex items-center gap-3">

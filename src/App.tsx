@@ -144,7 +144,7 @@ export default function App() {
         showFeedback(`Erro ao carregar dados: ${data.error}`, 'error');
       }
     } catch (err: any) {
-      if (!silent) showFeedback('Não foi possível conectar à Planilha Google.', 'error');
+      if (!silent) showFeedback('Não foi possível conectar à Planilha.', 'error');
     } finally {
       if (!silent) setIsSyncing(false);
     }
@@ -179,7 +179,7 @@ export default function App() {
       .then(res => res.json())
       .then(result => {
         if (result.success) {
-          showFeedback('Dados sincronizados com a Planilha Google!');
+          showFeedback('Dados sincronizados Sucesso!');
         }
       })
       .catch(() => {});
@@ -225,7 +225,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback('Reunião gravada na Planilha Google com sucesso!');
+        showFeedback('Reunião gravada com sucesso!');
         return;
       }
     } catch {
@@ -401,7 +401,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback(`Encaminhamento atualizado para "${newStatus}" na planilha!`);
+        showFeedback(`Encaminhamento atualizado com sucesso!`);
         return;
       }
     } catch {
@@ -426,7 +426,7 @@ export default function App() {
     setMeetings(loaded.meetings || []);
     setActions(loaded.actions || []);
     setIsSheetsConfigured(true);
-    showFeedback('Todos os dados foram carregados da Planilha Google!');
+    showFeedback('Todos os dados foram carregados com sucesso!');
   };
 
   return (

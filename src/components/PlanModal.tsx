@@ -333,9 +333,6 @@ export const PlanModal: React.FC<PlanModalProps> = ({
               <h3 className="font-bold text-lg text-slate-100 font-display">
                 {planToEdit ? 'Editar Planejamento Bimestral' : 'Novo Planejamento Bimestral'}
               </h3>
-              <p className="text-xs text-slate-400">
-                Defina o cronograma de períodos, tópicos temáticos e previsões horárias
-              </p>
             </div>
           </div>
           <button
@@ -465,7 +462,7 @@ export const PlanModal: React.FC<PlanModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">Conteúdos do Bimestre</h4>
-                <p className="text-slate-500 text-[11px]">O período corresponde ao <strong>{bimester}º Bimestre</strong>. Adicione os tópicos com código BNCC e carga horária.</p>
+                <p className="text-slate-500 text-[11px]">Tópicos com código BNCC e carga horária.</p>
               </div>
               <button
                 type="button"
