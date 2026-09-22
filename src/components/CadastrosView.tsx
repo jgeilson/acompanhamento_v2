@@ -4,6 +4,7 @@ import {
   BookOpen, 
   GraduationCap, 
   Plus, 
+  PlusCircle,
   Search, 
   Edit2, 
   Trash2, 
@@ -254,9 +255,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
           {activeSubTab === 'teachers' && (
             <button
               onClick={() => openTeacherModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Novo Professor</span>
             </button>
           )}
@@ -264,9 +265,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
           {activeSubTab === 'classes' && (
             <button
               onClick={() => openClassModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Nova Turma</span>
             </button>
           )}
@@ -274,9 +275,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
           {activeSubTab === 'subjects' && (
             <button
               onClick={() => openSubjectModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition-all flex items-center gap-2"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Nova Disciplina</span>
             </button>
           )}
@@ -478,9 +479,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
             </p>
             <button
               onClick={() => openTeacherModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all inline-flex items-center gap-1.5"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all inline-flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Cadastrar Primeiro Professor</span>
             </button>
           </div>
@@ -579,9 +580,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
             </p>
             <button
               onClick={() => openClassModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all inline-flex items-center gap-1.5"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all inline-flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Cadastrar Primeira Turma</span>
             </button>
           </div>
@@ -682,9 +683,9 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
             </p>
             <button
               onClick={() => openSubjectModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all inline-flex items-center gap-1.5"
+              className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition-all inline-flex items-center gap-2"
             >
-              <Plus className="w-4 h-4" />
+              <PlusCircle className="w-4 h-4 text-indigo-200" />
               <span>Cadastrar Primeira Disciplina</span>
             </button>
           </div>

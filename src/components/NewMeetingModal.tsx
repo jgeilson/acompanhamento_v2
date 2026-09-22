@@ -6,6 +6,7 @@ import {
   Clock, 
   AlertCircle, 
   Plus, 
+  PlusCircle,
   Trash2, 
   Calendar, 
   BookOpen, 
@@ -103,7 +104,11 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         );
         if (match) return true;
       }
-      const hasPlan = bimonthlyPlans.some(p => p.teacherId === selectedTeacher.id && p.classGroupId === c.id);
+      const hasPlan = bimonthlyPlans.some(p => {
+        const matchTeacher = p.teacherId === selectedTeacher.id;
+        const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
+        return matchTeacher && pClasses.includes(c.id);
+      });
       if (hasPlan) return true;
       return false;
     });
@@ -149,12 +154,13 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
 
   useEffect(() => {
     // Find plan for this teacher + subject + class
-    const plan = bimonthlyPlans.find(p => 
-      p.teacherId === selectedTeacherId && 
-      p.subjectId === selectedSubjectId && 
-      p.classGroupId === selectedClassGroupId &&
-      p.bimester === bimester
-    );
+    const plan = bimonthlyPlans.find(p => {
+      const matchTeacher = p.teacherId === selectedTeacherId;
+      const matchSubject = p.subjectId === selectedSubjectId;
+      const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
+      const matchClass = pClasses.includes(selectedClassGroupId);
+      return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(bimester);
+    });
 
     if (plan && plan.periods.length > 0) {
       // Load topics from all periods or current fortnight
@@ -825,7 +831,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                 onClick={handleAddActionRow}
                 className="w-full bg-white hover:bg-slate-50 border border-dashed border-slate-300 text-slate-700 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
               >
-                <Plus className="w-4 h-4 text-indigo-600" />
+                <PlusCircle className="w-4 h-4 text-indigo-600" />
                 <span>Adicionar Mais Um Encaminhamento</span>
               </button>
             </div>

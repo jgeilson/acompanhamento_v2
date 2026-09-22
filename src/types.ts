@@ -41,7 +41,8 @@ export interface BimonthlyPlan {
   id: string;
   teacherId: string;
   subjectId: string;
-  classGroupId: string;
+  classGroupId: string; // ID da turma principal (retrocompatibilidade)
+  classGroupIds?: string[]; // IDs de todas as turmas que compartilham este planejamento
   bimester: 1 | 2 | 3 | 4;
   year: number;
   periods: BimonthlyPeriodPlan[];

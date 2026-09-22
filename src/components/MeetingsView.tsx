@@ -119,7 +119,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
             className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0"
           >
             <PlusCircle className="w-4 h-4 text-indigo-200" />
-            <span>Iniciar Nova Reunião</span>
+            <span>Nova Reunião</span>
           </button>
         </div>
       </div>

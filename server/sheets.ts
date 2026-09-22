@@ -378,13 +378,14 @@ export async function syncAllToSheets(data: {
   if (data.bimonthlyPlans && data.bimonthlyPlans.length > 0) {
     const planRows: any[] = [];
     data.bimonthlyPlans.forEach(p => {
+      const classRef = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds.join(', ') : p.classGroupId;
       (p.periods || []).forEach((per: any) => {
         (per.topics || []).forEach((top: any) => {
           planRows.push([
             p.id,
             p.teacherId,
             p.subjectId,
-            p.classGroupId,
+            classRef,
             p.bimester,
             p.year,
             per.fortnightNumber,
@@ -764,7 +765,9 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     const planId = clean(row[0]) || `plan-${index + 1}`;
     const teacherId = clean(row[1]);
     const subjectId = clean(row[2]);
-    const classGroupId = clean(row[3]);
+    const rawClass = clean(row[3]);
+    const classGroupIds = rawClass.split(',').map((s: string) => s.trim()).filter(Boolean);
+    const classGroupId = classGroupIds[0] || rawClass;
     const bimester = parseInt(clean(row[4]) || '1', 10) || 1;
     const year = parseInt(clean(row[5]) || '2026', 10) || 2026;
 
@@ -774,6 +777,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
         teacherId,
         subjectId,
         classGroupId,
+        classGroupIds: classGroupIds.length > 0 ? classGroupIds : [classGroupId].filter(Boolean),
         bimester,
         year,
         periodsMap: new Map<number, any>()
@@ -782,7 +786,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
 
     const plan = plansMap.get(planId);
     const fortnightNum = parseInt(clean(row[6]) || '1', 10) || 1;
-    const periodTitle = clean(row[7]) || `Período #${fortnightNum}`;
+    const periodTitle = clean(row[7]) || `${bimester}º Bimestre`;
 
     if (!plan.periodsMap.has(fortnightNum)) {
       plan.periodsMap.set(fortnightNum, {
@@ -812,6 +816,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     teacherId: p.teacherId,
     subjectId: p.subjectId,
     classGroupId: p.classGroupId,
+    classGroupIds: p.classGroupIds || [p.classGroupId],
     bimester: p.bimester,
     year: p.year,
     periods: Array.from(p.periodsMap.values())

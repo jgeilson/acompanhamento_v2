@@ -330,6 +330,46 @@ export default function App() {
     autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
   };
 
+  // CRUD Handlers: Bimonthly Plans
+  const handleAddPlan = (newPlan: BimonthlyPlan) => {
+    // Check if plan already exists for same teacher, subject, bimester, and overlapping class
+    const newClasses = (newPlan.classGroupIds && newPlan.classGroupIds.length > 0) ? newPlan.classGroupIds : [newPlan.classGroupId];
+    const existsIndex = bimonthlyPlans.findIndex(p => {
+      if (p.teacherId !== newPlan.teacherId || p.subjectId !== newPlan.subjectId || Number(p.bimester) !== Number(newPlan.bimester)) {
+        return false;
+      }
+      const existingClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
+      return newClasses.some(nc => existingClasses.includes(nc));
+    });
+    let next: BimonthlyPlan[];
+    if (existsIndex >= 0) {
+      next = [...bimonthlyPlans];
+      next[existsIndex] = newPlan;
+    } else {
+      next = [newPlan, ...bimonthlyPlans];
+    }
+    setBimonthlyPlans(next);
+    localStorage.setItem('local_plans', JSON.stringify(next));
+    showFeedback('Planejamento bimestral salvo com sucesso!');
+    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
+  };
+
+  const handleUpdatePlan = (updatedPlan: BimonthlyPlan) => {
+    const next = bimonthlyPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p);
+    setBimonthlyPlans(next);
+    localStorage.setItem('local_plans', JSON.stringify(next));
+    showFeedback('Planejamento atualizado com sucesso!');
+    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    const next = bimonthlyPlans.filter(p => p.id !== planId);
+    setBimonthlyPlans(next);
+    localStorage.setItem('local_plans', JSON.stringify(next));
+    showFeedback('Planejamento removido com sucesso.');
+    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
+  };
+
   const handleUpdateAction = (updatedAction: PedagogicalAction) => {
     const next = actions.map(a => a.id === updatedAction.id ? updatedAction : a);
     setActions(next);
@@ -478,6 +518,9 @@ export default function App() {
             teachers={teachers}
             subjects={subjects}
             classGroups={classGroups}
+            onAddPlan={handleAddPlan}
+            onUpdatePlan={handleUpdatePlan}
+            onDeletePlan={handleDeletePlan}
           />
         )}
 
