@@ -219,7 +219,11 @@ export async function testAndSetupSheets(config?: GoogleSheetsConfig) {
   const existingSheetNames = (res.data.sheets || []).map(s => s.properties?.title || '');
   
   const requiredTabs = ['Professores', 'Turmas', 'Disciplinas', 'Planejamento', 'Reuniões', 'Encaminhamentos'];
+  const hasConfigTab = existingSheetNames.some(s => s.toLowerCase().includes('configur'));
   const missingTabs = requiredTabs.filter(tab => !existingSheetNames.includes(tab));
+  if (!hasConfigTab) {
+    missingTabs.push('Configurações');
+  }
 
   if (missingTabs.length > 0) {
     await sheets.spreadsheets.batchUpdate({
@@ -275,6 +279,11 @@ async function ensureSheetHeaders(sheets: any, spreadsheetId: string) {
       tab: 'Encaminhamentos',
       range: 'Encaminhamentos!A1:M1',
       values: [['ID Encaminhamento', 'ID Reunião', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Descrição da Ação', 'Categoria', 'Data Criação', 'Previsão Retomada', 'Status']]
+    },
+    {
+      tab: 'Configurações',
+      range: 'Configurações!A1:B1',
+      values: [['Chave', 'Valor']]
     }
   ];
 
@@ -651,17 +660,68 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     return res.data.values || [];
   };
 
-  const [rawTeachers, rawClasses, rawSubjects, rawPlans, rawMeetings, rawActions] = await Promise.all([
+  const [
+    rawTeachers, 
+    rawClasses, 
+    rawSubjects, 
+    rawPlans, 
+    rawMeetings, 
+    rawActions,
+    rawConfig1,
+    rawConfig2,
+    rawConfig3
+  ] = await Promise.all([
     getTabValues('Professores', 'A2:F1000'),
     getTabValues('Turmas', 'A2:D1000'),
     getTabValues('Disciplinas', 'A2:E1000'),
     getTabValues('Planejamento', 'A2:M3000'),
     getTabValues('Reuniões', 'A2:R2000'),
-    getTabValues('Encaminhamentos', 'A2:M2000')
+    getTabValues('Encaminhamentos', 'A2:M2000'),
+    getTabValues('Configurações', 'A2:B100'),
+    getTabValues('Configuracoes', 'A2:B100'),
+    getTabValues('Configuração', 'A2:B100')
   ]);
+
+  const rawConfig = (rawConfig1 && rawConfig1.length > 0) 
+    ? rawConfig1 
+    : ((rawConfig2 && rawConfig2.length > 0) ? rawConfig2 : (rawConfig3 || []));
 
   const clean = (val: any) => (val === undefined || val === null ? '' : String(val).trim());
   const slugify = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30);
+
+  // Parse Settings (Configurações: Chave / Valor)
+  const rawSettingsMap: Record<string, string> = {};
+  let coordinatorNameFromConfig = '';
+  let schoolNameFromConfig = '';
+  let academicYearFromConfig = '';
+
+  rawConfig.forEach((row: any[]) => {
+    const key = clean(row[0]);
+    const val = clean(row[1]);
+    if (!key) return;
+    rawSettingsMap[key] = val;
+
+    const normKey = key
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+
+    if (normKey.includes('coordenador')) {
+      coordinatorNameFromConfig = val;
+    } else if (normKey.includes('escola') || normKey.includes('instituicao') || normKey.includes('colegio')) {
+      schoolNameFromConfig = val;
+    } else if (normKey.includes('ano') || normKey.includes('letivo') || normKey.includes('exercicio')) {
+      academicYearFromConfig = val;
+    }
+  });
+
+  const settings = {
+    coordinatorName: coordinatorNameFromConfig || rawSettingsMap['Coordenador_Pedagogico'] || rawSettingsMap['Coordenador'] || '',
+    schoolName: schoolNameFromConfig || rawSettingsMap['Nome_Escola'] || rawSettingsMap['Escola'] || '',
+    academicYear: academicYearFromConfig || rawSettingsMap['Ano_Letivo'] || rawSettingsMap['Ano'] || '',
+    raw: rawSettingsMap
+  };
 
   // Parse Teachers
   const teachers = rawTeachers.map((row: any[], index: number) => {
@@ -831,6 +891,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     bimonthlyPlans,
     meetings,
     actions,
+    settings,
     rawCounts: {
       teachers: teachers.length,
       classGroups: classGroups.length,

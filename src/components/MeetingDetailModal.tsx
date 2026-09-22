@@ -15,6 +15,7 @@ import {
   PEDAGOGICAL_REASON_OPTIONS,
   MEETING_PERIODICITY_OPTIONS
 } from '../types';
+import cabecalhoImg from '../data/cabecalho.png';
 
 interface MeetingDetailModalProps {
   meeting: BiweeklyMeeting | null;
@@ -79,11 +80,17 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 text-slate-900 font-sans" id="printable-meeting">
           
           {/* Header Image Banner */}
-          <div className="w-full flex justify-center border-b border-slate-200 pb-3 mb-2">
+          <div className="w-full flex justify-center border-b border-slate-200 pb-3 mb-2 print:border-b print:pb-2 print:mb-2">
             <img 
-              src="src/data/cabecalho.png" 
+              src={cabecalhoImg} 
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/cabecalho.png')) {
+                  target.src = '/cabecalho.png';
+                }
+              }}
               alt="Secretaria de Estado da Educação - Governo da Paraíba - Escola Cidadã Integral" 
-              className="w-full max-h-20 sm:max-h-24 object-contain print:max-h-28"
+              className="w-full max-h-20 sm:max-h-24 object-contain print:max-h-28 print:block print:w-full print:mx-auto"
               referrerPolicy="no-referrer"
             />
           </div>

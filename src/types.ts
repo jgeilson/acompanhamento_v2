@@ -205,3 +205,10 @@ export interface BiweeklyMeeting {
 }
 
 export type ActiveTab = 'dashboard' | 'meetings' | 'planning' | 'timeline' | 'actions';
+
+export interface AppSettings {
+  coordinatorName: string;
+  schoolName: string;
+  academicYear: string;
+  raw?: Record<string, string>;
+}

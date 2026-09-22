@@ -120,4 +120,15 @@
   #printable-meeting td {
     padding: 4px 6px !important;
   }
+
+  /* Garante exibição perfeita do cabeçalho institucional na impressão */
+  #printable-meeting img {
+    display: block !important;
+    max-width: 100% !important;
+    height: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

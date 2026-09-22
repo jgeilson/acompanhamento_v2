@@ -15,7 +15,8 @@ import {
   ClassGroup, 
   BimonthlyPlan, 
   BiweeklyMeeting, 
-  PedagogicalAction 
+  PedagogicalAction,
+  AppSettings
 } from './types';
 
 import { 
@@ -38,6 +39,13 @@ export default function App() {
   
   const [meetings, setMeetings] = useState<BiweeklyMeeting[]>(INITIAL_BIWEEKLY_MEETINGS);
   const [actions, setActions] = useState<PedagogicalAction[]>(INITIAL_PEDAGOGICAL_ACTIONS);
+
+  // App Settings from Sheet (Aba Configurações)
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => ({
+    coordinatorName: localStorage.getItem('default_coordinator_name') || 'Coordenação Pedagógica',
+    schoolName: localStorage.getItem('school_name') || '',
+    academicYear: localStorage.getItem('academic_year') || '2026'
+  }));
 
   // Sheets Sync State
   const [isSheetsConfigured, setIsSheetsConfigured] = useState<boolean>(false);
@@ -89,6 +97,25 @@ export default function App() {
         setBimonthlyPlans(loadedPlans);
         setMeetings(loadedMeetings);
         setActions(loadedActions);
+
+        if (data.settings) {
+          const loadedSettings: AppSettings = {
+            coordinatorName: data.settings.coordinatorName || 'Coordenação Pedagógica',
+            schoolName: data.settings.schoolName || '',
+            academicYear: String(data.settings.academicYear || '2026'),
+            raw: data.settings.raw || {}
+          };
+          if (loadedSettings.coordinatorName) {
+            localStorage.setItem('default_coordinator_name', loadedSettings.coordinatorName);
+          }
+          if (loadedSettings.schoolName) {
+            localStorage.setItem('school_name', loadedSettings.schoolName);
+          }
+          if (loadedSettings.academicYear) {
+            localStorage.setItem('academic_year', loadedSettings.academicYear);
+          }
+          setAppSettings(loadedSettings);
+        }
 
         if (!silent) {
           showFeedback(`Dados atualizados! ${loadedTeachers.length} docente(s), ${loadedClasses.length} turma(s) e ${loadedMeetings.length} reunião(ões) carregados.`);
@@ -243,6 +270,7 @@ export default function App() {
         isSheetsConfigured={isSheetsConfigured}
         isSyncing={isSyncing}
         onQuickReload={() => loadDataFromSheets(false)}
+        appSettings={appSettings}
       />
 
       {/* Floating Sync Feedback Toast */}
@@ -331,6 +359,7 @@ export default function App() {
           existingActions={actions}
           onSaveMeeting={handleSaveMeeting}
           initialTeacherId={initialTeacherForModal}
+          defaultCoordinator={appSettings.coordinatorName}
         />
       )}
 

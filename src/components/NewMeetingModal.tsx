@@ -45,6 +45,7 @@ interface NewMeetingModalProps {
   existingActions: PedagogicalAction[];
   onSaveMeeting: (meeting: BiweeklyMeeting) => void;
   initialTeacherId?: string;
+  defaultCoordinator?: string;
 }
 
 export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
@@ -56,7 +57,8 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   bimonthlyPlans,
   existingActions,
   onSaveMeeting,
-  initialTeacherId
+  initialTeacherId,
+  defaultCoordinator
 }) => {
   // Step Control (1 to 5)
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -70,7 +72,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   const [fortnightPeriod, setFortnightPeriod] = useState<string>('Encontro Regular #1');
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [coordinatorName, setCoordinatorName] = useState<string>(() => {
-    return localStorage.getItem('default_coordinator_name') || DEFAULT_COORDINATOR_NAME;
+    return defaultCoordinator || localStorage.getItem('default_coordinator_name') || DEFAULT_COORDINATOR_NAME;
   });
 
   // Derived teacher subjects and classes

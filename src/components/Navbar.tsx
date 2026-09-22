@@ -12,7 +12,7 @@ import {
   Clock,
   RefreshCw
 } from 'lucide-react';
-import { ActiveTab } from '../types';
+import { ActiveTab, AppSettings } from '../types';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -22,6 +22,7 @@ interface NavbarProps {
   isSheetsConfigured?: boolean;
   isSyncing?: boolean;
   onQuickReload?: () => void;
+  appSettings?: AppSettings;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,7 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenNewMeeting,
   isSheetsConfigured = false,
   isSyncing = false,
-  onQuickReload
+  onQuickReload,
+  appSettings
 }) => {
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-slate-100 sticky top-0 z-30 shadow-md">
@@ -51,19 +53,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Acompanhamento Pedagógico
                 </h1>
               </div>
+              {(appSettings?.schoolName) && (
+                <div className="text-xs text-slate-400 truncate max-w-md flex items-center gap-1.5 mt-0.5">
+                  {appSettings.schoolName && <span className="text-slate-300 font-medium">{appSettings.schoolName}</span>}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenNewMeeting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Nova Reunião</span>
-            </button>
-          </div>
+          
         </div>
 
         {/* Navigation Tabs */}
