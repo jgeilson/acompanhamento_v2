@@ -148,14 +148,14 @@ export const PedagogicalTimelineView: React.FC<PedagogicalTimelineViewProps> = (
   classMeetingsAll.forEach(m => {
     m.topicProgress?.forEach(tp => {
       if (tp.status === 'CONCLUIDO' || tp.status === 'EM_ANDAMENTO' || tp.status === 'RETOMADA') {
-        executedTopicsSet.add(tp.topicTitle);
+        executedTopicsSet.add(tp.topicId || tp.topicTitle);
       }
     });
   });
 
   const planningFollowedPct = totalPlannedTopicsCount > 0
     ? Math.min(100, Math.round((executedTopicsSet.size / totalPlannedTopicsCount) * 100))
-    : classMeetingsAll.length > 0 ? Math.min(100, Math.min(100, classMeetingsAll.length * 12 + 20)) : 0;
+    : null;
 
   const classSubjectSummaries = subjects.map(subject => {
     const subjectMeetings = classMeetingsAll.filter(m => m.subjectId === subject.id);
@@ -476,15 +476,17 @@ export const PedagogicalTimelineView: React.FC<PedagogicalTimelineViewProps> = (
                 </div>
 
                 {/* Planejamento Acompanhado */}
-                <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl px-4 py-2 min-w-[160px]">
-                  <div className="text-[11px] text-indigo-900 font-medium flex items-center justify-between">
+                <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl px-4 py-2 min-w-[165px]">
+                  <div className="text-[11px] text-indigo-900 font-medium flex items-center justify-between gap-2">
                     <span>Planejamento Acompanhado</span>
-                    <span className="font-bold text-indigo-700">{planningFollowedPct}%</span>
+                    <span className="font-bold text-indigo-700">
+                      {planningFollowedPct !== null ? `${planningFollowedPct}%` : 'Sem plano cadastrado'}
+                    </span>
                   </div>
                   <div className="w-full bg-indigo-200/60 h-2 rounded-full mt-1.5 overflow-hidden">
                     <div 
                       className="bg-indigo-600 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${planningFollowedPct}%` }}
+                      style={{ width: `${planningFollowedPct !== null ? planningFollowedPct : 0}%` }}
                     />
                   </div>
                 </div>
