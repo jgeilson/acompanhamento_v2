@@ -728,7 +728,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     const name = clean(row[1]);
     const id = clean(row[0]) || (name ? `prof-${slugify(name)}` : `prof-${index + 1}`);
     const email = clean(row[2]) || '';
-    const avatarUrl = clean(row[3]) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150';
+    const avatarUrl = clean(row[3]) || undefined;
     const subjects = clean(row[4]).split(',').map(s => s.trim()).filter(Boolean);
     const classes = clean(row[5]).split(',').map(c => c.trim()).filter(Boolean);
 

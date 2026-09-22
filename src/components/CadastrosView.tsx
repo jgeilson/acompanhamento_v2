@@ -76,7 +76,6 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   // Form states for Teacher
   const [teacherName, setTeacherName] = useState('');
   const [teacherEmail, setTeacherEmail] = useState('');
-  const [teacherAvatar, setTeacherAvatar] = useState('');
   const [teacherSelectedSubjects, setTeacherSelectedSubjects] = useState<string[]>([]);
   const [teacherSelectedClasses, setTeacherSelectedClasses] = useState<string[]>([]);
 
@@ -96,14 +95,12 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
       setEditingTeacher(teacher);
       setTeacherName(teacher.name);
       setTeacherEmail(teacher.email || '');
-      setTeacherAvatar(teacher.avatarUrl || '');
       setTeacherSelectedSubjects(teacher.subjects || []);
       setTeacherSelectedClasses(teacher.classes || []);
     } else {
       setEditingTeacher(null);
       setTeacherName('');
       setTeacherEmail('');
-      setTeacherAvatar('');
       setTeacherSelectedSubjects([]);
       setTeacherSelectedClasses([]);
     }
@@ -118,7 +115,6 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
       id: editingTeacher ? editingTeacher.id : `prof-${Date.now()}`,
       name: teacherName.trim(),
       email: teacherEmail.trim(),
-      avatarUrl: teacherAvatar.trim() || undefined,
       subjects: teacherSelectedSubjects,
       classes: teacherSelectedClasses
     };
@@ -374,12 +370,8 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
                     {/* Header: Avatar, Name, Email */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-sm overflow-hidden shrink-0">
-                          {teacher.avatarUrl ? (
-                            <img src={teacher.avatarUrl} alt={teacher.name} className="w-full h-full object-cover" />
-                          ) : (
-                            teacher.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()
-                          )}
+                        <div className="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-bold text-indigo-700 text-sm shrink-0">
+                          {teacher.name.split(' ').map(n => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
                         </div>
                         <div>
                           <h4 className="font-bold text-slate-900 text-sm">{teacher.name}</h4>

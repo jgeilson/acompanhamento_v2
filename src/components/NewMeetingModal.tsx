@@ -407,7 +407,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                   >
                     {teachers.map(t => (
-                      <option key={t.id} value={t.id}>{t.name} ({t.email})</option>
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
