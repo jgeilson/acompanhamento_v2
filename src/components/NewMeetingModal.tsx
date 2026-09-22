@@ -192,7 +192,6 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans]);
 
   // Step 4 State: Pedagogical Context & Reasons (multiple allowed)
-  const [hasDeviation, setHasDeviation] = useState<boolean>(true);
   const [selectedReasons, setSelectedReasons] = useState<PedagogicalReasonType[]>(['DIFICULDADE_APRENDIZAGEM_RETOMADA']);
   const [pedagogicalContextNotes, setPedagogicalContextNotes] = useState<string>('');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
