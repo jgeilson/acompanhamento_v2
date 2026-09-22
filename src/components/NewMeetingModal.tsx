@@ -171,7 +171,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
             topicId: t.id,
             topicTitle: t.title,
             bnccCode: t.bnccCode,
-            status: 'CONCLUIDO',
+            status: 'EM_ANDAMENTO',
             observation: ''
           });
         });
@@ -184,7 +184,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
           topicId: 'top-custom-1',
           topicTitle: 'Conteúdo Previsto para este Período',
           bnccCode: '(EM13CNT101)',
-          status: 'CONCLUIDO',
+          status: 'EM_ANDAMENTO',
           observation: ''
         }
       ]);
