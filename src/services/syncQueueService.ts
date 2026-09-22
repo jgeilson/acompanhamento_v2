@@ -15,7 +15,7 @@ export interface SyncQueueItem {
   id: string; // queue item id
   entityType: SyncEntityType;
   entityId: string;
-  operation: 'upsert' | 'update_status';
+  operation: 'upsert' | 'update_status' | 'delete';
   payload: any;
   status: SyncItemStatus;
   attempts: number;
@@ -113,7 +113,7 @@ class SyncQueueManager {
         if (hasPendingDue && !this.isProcessing) {
           this.processQueue();
         }
-      }, 5000);
+      }, 2000);
     }
   }
 
@@ -176,7 +176,7 @@ class SyncQueueManager {
   public enqueue(
     entityType: SyncEntityType,
     entityId: string,
-    operation: 'upsert' | 'update_status',
+    operation: 'upsert' | 'update_status' | 'delete',
     payload: any
   ): string {
     const now = new Date().toISOString();
@@ -299,7 +299,24 @@ class SyncQueueManager {
    * Executes the appropriate endpoint based on entityType and operation
    */
   private async executeRemoteSync(item: SyncQueueItem): Promise<{ success: boolean; operation?: string; error?: string; retryable?: boolean }> {
-    const { entityType, payload, operation } = item;
+    const { entityType, payload, operation, entityId } = item;
+
+    if (operation === 'delete') {
+      const res = await fetch('/api/sheets/delete-entity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityType, id: entityId })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          error: errData.error || `HTTP ${res.status}: ${res.statusText}`,
+          retryable: errData.retryable !== undefined ? errData.retryable : res.status >= 500
+        };
+      }
+      return await res.json();
+    }
 
     if (operation === 'update_status' && entityType === 'action_status') {
       const res = await fetch('/api/sheets/update-action-status', {

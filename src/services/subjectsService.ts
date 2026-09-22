@@ -46,6 +46,7 @@ export const subjectsService = {
   delete(current: Subject[], subjectId: string): Subject[] {
     const next = current.filter(s => s.id !== subjectId);
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
+    syncQueueService.enqueue('subject', subjectId, 'delete', { id: subjectId });
     return next;
   }
 };

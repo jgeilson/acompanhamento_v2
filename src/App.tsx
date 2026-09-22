@@ -43,6 +43,7 @@ import {
   plansService,
   actionsService
 } from './services';
+import { syncQueueService, SyncQueueItem } from './services/syncQueueService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -188,189 +189,136 @@ export default function App() {
   // Calculations
   const pendingActionsCount = actions.filter(a => a.status !== 'SUPERADA').length;
 
+  // Listen to syncQueueService completion events to show a background "Sincronizado na Planilha" toast
+  const prevQueuePendingRef = React.useRef<number>(0);
+
+  useEffect(() => {
+    const unsubscribe = syncQueueService.subscribe((items: SyncQueueItem[]) => {
+      const pendingCount = items.filter((i: SyncQueueItem) => i.status === 'pending' || i.status === 'syncing').length;
+      if (prevQueuePendingRef.current > 0 && pendingCount === 0) {
+        showFeedback('Todas as alterações locais foram sincronizadas na Planilha Google com sucesso!', 'success');
+      }
+      prevQueuePendingRef.current = pendingCount;
+    });
+    return unsubscribe;
+  }, [showFeedback]);
+
   // Handlers: Meetings
   const handleSaveMeeting = async (newMeeting: BiweeklyMeeting) => {
     const { nextMeetings, nextActions } = meetingsService.add(meetings, actions, newMeeting);
     setMeetings(nextMeetings);
     setActions(nextActions);
-
-    const sheetsRes = await meetingsService.saveToSheets(newMeeting);
-    if (sheetsRes.success) {
-      showFeedback('Reunião gravada com sucesso no final da planilha!');
-      return;
-    }
-
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, nextActions);
+    showFeedback('Reunião salva no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleDeleteMeeting = (meetingId: string) => {
     const nextMeetings = meetingsService.delete(meetings, meetingId);
     setMeetings(nextMeetings);
-    showFeedback('Reunião excluída com sucesso.');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, actions);
+    showFeedback('Reunião excluída no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   // Handlers: Teachers
   const handleAddTeacher = async (newTeacher: Teacher) => {
     const next = teachersService.add(teachers, newTeacher);
     setTeachers(next);
-
-    const sheetsRes = await teachersService.saveToSheets(newTeacher);
-    if (sheetsRes.success) {
-      showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) no final da planilha!`);
-      return;
-    }
-
-    showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) com sucesso!`);
-    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Professor(a) "${newTeacher.name}" salvo(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
     const next = teachersService.update(teachers, updatedTeacher);
     setTeachers(next);
-    showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a)!`);
-    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
     const deleted = teachers.find(t => t.id === teacherId);
     const next = teachersService.delete(teachers, teacherId);
     setTeachers(next);
-    showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a).`);
-    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   // Handlers: Classes
   const handleAddClassGroup = async (newClass: ClassGroup) => {
     const next = classesService.add(classGroups, newClass);
     setClassGroups(next);
-
-    const sheetsRes = await classesService.saveToSheets(newClass);
-    if (sheetsRes.success) {
-      showFeedback(`Turma "${newClass.name}" cadastrada no final da planilha!`);
-      return;
-    }
-
-    showFeedback(`Turma "${newClass.name}" cadastrada com sucesso!`);
-    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    showFeedback(`Turma "${newClass.name}" salva no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleUpdateClassGroup = (updatedClass: ClassGroup) => {
     const next = classesService.update(classGroups, updatedClass);
     setClassGroups(next);
-    showFeedback(`Turma "${updatedClass.name}" atualizada!`);
-    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    showFeedback(`Turma "${updatedClass.name}" atualizada no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleDeleteClassGroup = (classId: string) => {
     const deleted = classGroups.find(c => c.id === classId);
     const next = classesService.delete(classGroups, classId);
     setClassGroups(next);
-    showFeedback(`Turma "${deleted?.name || ''}" removida.`);
-    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    showFeedback(`Turma "${deleted?.name || ''}" removida no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   // Handlers: Subjects
   const handleAddSubject = async (newSubject: Subject) => {
     const next = subjectsService.add(subjects, newSubject);
     setSubjects(next);
-
-    const sheetsRes = await subjectsService.saveToSheets(newSubject);
-    if (sheetsRes.success) {
-      showFeedback(`Disciplina "${newSubject.name}" cadastrada no final da planilha!`);
-      return;
-    }
-
-    showFeedback(`Disciplina "${newSubject.name}" cadastrada com sucesso!`);
-    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Disciplina "${newSubject.name}" salva no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleUpdateSubject = (updatedSubject: Subject) => {
     const next = subjectsService.update(subjects, updatedSubject);
     setSubjects(next);
-    showFeedback(`Disciplina "${updatedSubject.name}" atualizada!`);
-    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Disciplina "${updatedSubject.name}" atualizada no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   const handleDeleteSubject = (subjectId: string) => {
     const deleted = subjects.find(s => s.id === subjectId);
     const next = subjectsService.delete(subjects, subjectId);
     setSubjects(next);
-    showFeedback(`Disciplina "${deleted?.name || ''}" removida.`);
-    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    showFeedback(`Disciplina "${deleted?.name || ''}" removida no computador (local). Sincronizando com a Planilha Google...`, 'info');
   };
 
   // Handlers: Pedagogical Actions
   const handleAddAction = async (newAction: PedagogicalAction) => {
     const next = actionsService.add(actions, newAction);
     setActions(next);
-
-    const sheetsRes = await actionsService.saveToSheets(newAction);
-    if (sheetsRes.success) {
-      showFeedback('Encaminhamento gravado no final da planilha com sucesso!');
-      return;
-    }
-
-    showFeedback('Encaminhamento cadastrado com sucesso!');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+    showFeedback('Encaminhamento salvo no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleUpdateAction = (updatedAction: PedagogicalAction) => {
     const next = actionsService.update(actions, updatedAction);
     setActions(next);
-    showFeedback('Encaminhamento atualizado com sucesso!');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+    showFeedback('Encaminhamento atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleDeleteAction = (actionId: string) => {
     const next = actionsService.delete(actions, actionId);
     setActions(next);
-    showFeedback('Encaminhamento excluído.');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+    showFeedback('Encaminhamento excluído no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleUpdateActionStatus = async (actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA') => {
     const updatedActions = actionsService.updateStatus(actions, actionId, newStatus);
     setActions(updatedActions);
-
-    const sheetsRes = await actionsService.updateStatusInSheets(actionId, newStatus);
-    if (sheetsRes.success) {
-      showFeedback('Status do encaminhamento atualizado com sucesso!');
-      return;
-    }
-
-    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, updatedActions);
+    showFeedback('Status atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   // Handlers: Bimonthly Plans
   const handleAddPlan = async (newPlan: BimonthlyPlan) => {
-    const { nextPlans, isNew } = plansService.addOrUpdate(bimonthlyPlans, newPlan);
+    const { nextPlans } = plansService.addOrUpdate(bimonthlyPlans, newPlan);
     setBimonthlyPlans(nextPlans);
-
-    if (isNew) {
-      const sheetsRes = await plansService.saveToSheets(newPlan);
-      if (sheetsRes.success) {
-        showFeedback('Planejamento gravado no final da planilha com sucesso!');
-        return;
-      }
-    }
-
-    showFeedback('Planejamento bimestral salvo com sucesso!');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, nextPlans, meetings, actions);
+    showFeedback('Planejamento salvo no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleUpdatePlan = (updatedPlan: BimonthlyPlan) => {
     const next = plansService.update(bimonthlyPlans, updatedPlan);
     setBimonthlyPlans(next);
-    showFeedback('Planejamento atualizado com sucesso!');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, next, meetings, actions);
+    showFeedback('Planejamento atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleDeletePlan = (planId: string) => {
     const next = plansService.delete(bimonthlyPlans, planId);
     setBimonthlyPlans(next);
-    showFeedback('Planejamento removido com sucesso.');
-    syncFullDatasetToSheets(teachers, subjects, classGroups, next, meetings, actions);
+    showFeedback('Planejamento removido no computador (local). Sincronizando com a Planilha Google...', 'info');
   };
 
   const handleDataLoadedFromSheets = (loaded: {

@@ -11,9 +11,14 @@ import {
   FileText,
   Clock,
   RefreshCw,
-  FolderOpen
+  FolderOpen,
+  CheckCircle2,
+  AlertTriangle,
+  HardDrive,
+  Cloud
 } from 'lucide-react';
 import { ActiveTab, AppSettings } from '../types';
+import { syncQueueService } from '../services/syncQueueService';
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -77,8 +82,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="hidden md:inline">{isSyncing ? 'Atualizando...' : 'Recarregar'}</span>
               </button>
             )}
-
-            
           </div>
 
         </div>

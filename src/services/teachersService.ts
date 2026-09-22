@@ -46,6 +46,7 @@ export const teachersService = {
   delete(current: Teacher[], teacherId: string): Teacher[] {
     const next = current.filter(t => t.id !== teacherId);
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
+    syncQueueService.enqueue('teacher', teacherId, 'delete', { id: teacherId });
     return next;
   }
 };

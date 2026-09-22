@@ -46,6 +46,7 @@ export const classesService = {
   delete(current: ClassGroup[], classId: string): ClassGroup[] {
     const next = current.filter(c => c.id !== classId);
     saveLocalData(STORAGE_KEYS.CLASSES, next);
+    syncQueueService.enqueue('class', classId, 'delete', { id: classId });
     return next;
   }
 };

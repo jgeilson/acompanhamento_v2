@@ -11,6 +11,7 @@ import {
   appendSubjectToSheet,
   appendActionToSheet,
   updateActionStatusInSheet,
+  deleteEntityFromSheet,
   readDataFromSheet,
   syncAllToSheets,
   readAllFromSheets,
@@ -340,6 +341,27 @@ apiRouter.post('/sheets/update-action-status', async (req, res) => {
       success: false,
       id: actionId,
       error: error.message || 'Falha ao atualizar encaminhamento na Planilha Google.',
+      retryable: !isPermanent
+    });
+  }
+});
+
+apiRouter.post('/sheets/delete-entity', async (req, res) => {
+  const { entityType, id, config } = req.body || {};
+  if (!entityType || !id) {
+    return res.status(400).json({ success: false, error: 'Parâmetros entityType e id são obrigatórios.', retryable: false });
+  }
+
+  try {
+    const result = await deleteEntityFromSheet(entityType, id, config);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('Erro ao excluir registro na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
+    return res.status(500).json({
+      success: false,
+      id,
+      error: error.message || 'Falha ao excluir registro na Planilha Google.',
       retryable: !isPermanent
     });
   }

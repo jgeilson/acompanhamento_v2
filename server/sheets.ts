@@ -894,6 +894,54 @@ export async function updateActionStatusInSheet(actionId: string, newStatus: str
 }
 
 /**
+ * Removes an entity by ID from its specific sheet tab without clearing the rest of the sheet or affecting other data
+ */
+export async function deleteEntityFromSheet(entityType: string, id: string, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+
+  let tabName = '';
+  let rangeEnd = 'Z';
+  switch (entityType) {
+    case 'teacher': tabName = 'Professores'; rangeEnd = 'F'; break;
+    case 'class': tabName = 'Turmas'; rangeEnd = 'D'; break;
+    case 'subject': tabName = 'Disciplinas'; rangeEnd = 'E'; break;
+    case 'plan': tabName = 'Planejamento'; rangeEnd = 'M'; break;
+    case 'meeting': tabName = 'Reuniões'; rangeEnd = 'R'; break;
+    case 'action':
+    case 'action_status': tabName = 'Encaminhamentos'; rangeEnd = 'R'; break;
+    default:
+      return { success: false, id, error: `Tipo de entidade desconhecido: ${entityType}`, retryable: false };
+  }
+
+  const range = `${tabName}!A2:${rangeEnd}3000`;
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range
+  }).catch(() => ({ data: { values: [] } }));
+
+  const currentRows: any[][] = res.data.values || [];
+  const filteredRows = currentRows.filter(r => r && String(r[0]).trim() !== String(id).trim());
+
+  if (currentRows.length === filteredRows.length) {
+    // Row wasn't found in Sheet, consider it deleted (idempotent success)
+    return { success: true, id, operation: 'deleted', rowFound: false, syncedAt: new Date().toISOString() };
+  }
+
+  // Clear current data range for this tab and write remaining rows back
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range }).catch(() => {});
+  if (filteredRows.length > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${tabName}!A2`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: filteredRows }
+    });
+  }
+
+  return { success: true, id, operation: 'deleted', rowFound: true, syncedAt: new Date().toISOString() };
+}
+
+/**
  * Appends multiple meetings and actions to the Google Sheet
  */
 export async function appendMeetingsToSheet(meetings: any[], config?: GoogleSheetsConfig) {

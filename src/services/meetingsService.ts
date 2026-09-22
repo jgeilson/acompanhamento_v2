@@ -58,6 +58,7 @@ export const meetingsService = {
   delete(currentMeetings: BiweeklyMeeting[], meetingId: string): BiweeklyMeeting[] {
     const next = currentMeetings.filter(m => m.id !== meetingId);
     saveLocalData(STORAGE_KEYS.MEETINGS, next);
+    syncQueueService.enqueue('meeting', meetingId, 'delete', { id: meetingId });
     return next;
   }
 };

@@ -63,6 +63,7 @@ export const plansService = {
   delete(currentPlans: BimonthlyPlan[], planId: string): BimonthlyPlan[] {
     const next = currentPlans.filter(p => p.id !== planId);
     saveLocalData(STORAGE_KEYS.PLANS, next);
+    syncQueueService.enqueue('plan', planId, 'delete', { id: planId });
     return next;
   }
 };

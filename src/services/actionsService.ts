@@ -75,6 +75,7 @@ export const actionsService = {
   delete(current: PedagogicalAction[], actionId: string): PedagogicalAction[] {
     const next = current.filter(a => a.id !== actionId);
     saveLocalData(STORAGE_KEYS.ACTIONS, next);
+    syncQueueService.enqueue('action', actionId, 'delete', { id: actionId });
     return next;
   }
 };
