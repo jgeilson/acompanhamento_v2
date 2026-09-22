@@ -82,32 +82,6 @@ export default function App() {
     }, 4000);
   }, []);
 
-  // Background full sync helper
-  const syncFullDatasetToSheets = useCallback(async (
-    currentTeachers: Teacher[],
-    currentSubjects: Subject[],
-    currentClasses: ClassGroup[],
-    currentPlans: BimonthlyPlan[],
-    currentMeetings: BiweeklyMeeting[],
-    currentActions: PedagogicalAction[]
-  ) => {
-    try {
-      const res = await sheetsService.syncAll({
-        teachers: currentTeachers,
-        subjects: currentSubjects,
-        classGroups: currentClasses,
-        bimonthlyPlans: currentPlans,
-        meetings: currentMeetings,
-        actions: currentActions
-      });
-      if (res.success) {
-        showFeedback('Dados sincronizados com a nuvem com sucesso!');
-      }
-    } catch {
-      // Background sync silent fail / offline
-    }
-  }, [showFeedback]);
-
   // Function to load all data from Google Sheets
   const loadDataFromSheets = useCallback(async (silent = false) => {
     if (!silent) setIsSyncing(true);
