@@ -169,7 +169,8 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
                       <span className="font-bold text-slate-900">"{item.actionDescription}"</span>
                       <span className="font-bold text-[10px] px-2 py-0.5 rounded border bg-white">
                         {item.verificationResult === 'SUPERADA' ? 'Dificuldade Superada ✓' :
-                         item.verificationResult === 'PARCIALMENTE_SUPERADA' ? 'Parcialmente Superada ⚠' : 'Continua Presente ✖'}
+                         item.verificationResult === 'PARCIALMENTE_SUPERADA' ? 'Parcialmente Superada ⚠' :
+                         item.verificationResult === 'CONTINUA_PRESENTE' ? 'Continua Presente ✖' : 'Pendente de Avaliação ⏳'}
                       </span>
                     </div>
                     {item.notes && <p className="text-slate-600 italic text-[11px]">{item.notes}</p>}

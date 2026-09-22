@@ -90,40 +90,37 @@ export default function App() {
       const data = await sheetsService.loadAll();
 
       if (data.success || Array.isArray(data.teachers)) {
-        // Reconcile remote data with local state & pending queue
-        const reconciled = syncQueueService.reconcileAll(
-          {
-            teachers: data.teachers,
-            classGroups: data.classGroups,
-            subjects: data.subjects,
-            bimonthlyPlans: data.bimonthlyPlans,
-            meetings: data.meetings,
-            actions: data.actions
-          },
-          {
-            teachers,
-            classGroups,
-            subjects,
-            bimonthlyPlans,
-            meetings,
-            actions
-          }
-        );
-
-        setTeachers(reconciled.teachers);
-        setClassGroups(reconciled.classGroups);
-        setSubjects(reconciled.subjects);
-        setBimonthlyPlans(reconciled.bimonthlyPlans);
-        setMeetings(reconciled.meetings);
-        setActions(reconciled.actions);
-
-        // Update local cache with reconciled data
-        saveLocalData(STORAGE_KEYS.TEACHERS, reconciled.teachers);
-        saveLocalData(STORAGE_KEYS.CLASSES, reconciled.classGroups);
-        saveLocalData(STORAGE_KEYS.SUBJECTS, reconciled.subjects);
-        saveLocalData(STORAGE_KEYS.PLANS, reconciled.bimonthlyPlans);
-        saveLocalData(STORAGE_KEYS.MEETINGS, reconciled.meetings);
-        saveLocalData(STORAGE_KEYS.ACTIONS, reconciled.actions);
+        // Reconcile remote data with latest state via functional updaters to prevent stale closures
+        setTeachers(prev => {
+          const rec = syncQueueService.reconcileWithRemote('teacher', data.teachers || [], prev);
+          saveLocalData(STORAGE_KEYS.TEACHERS, rec);
+          return rec;
+        });
+        setClassGroups(prev => {
+          const rec = syncQueueService.reconcileWithRemote('class', data.classGroups || [], prev);
+          saveLocalData(STORAGE_KEYS.CLASSES, rec);
+          return rec;
+        });
+        setSubjects(prev => {
+          const rec = syncQueueService.reconcileWithRemote('subject', data.subjects || [], prev);
+          saveLocalData(STORAGE_KEYS.SUBJECTS, rec);
+          return rec;
+        });
+        setBimonthlyPlans(prev => {
+          const rec = syncQueueService.reconcileWithRemote('plan', data.bimonthlyPlans || [], prev);
+          saveLocalData(STORAGE_KEYS.PLANS, rec);
+          return rec;
+        });
+        setMeetings(prev => {
+          const rec = syncQueueService.reconcileWithRemote('meeting', data.meetings || [], prev);
+          saveLocalData(STORAGE_KEYS.MEETINGS, rec);
+          return rec;
+        });
+        setActions(prev => {
+          const rec = syncQueueService.reconcileWithRemote('action', data.actions || [], prev);
+          saveLocalData(STORAGE_KEYS.ACTIONS, rec);
+          return rec;
+        });
 
         // Continue syncing pending items in queue
         syncQueueService.processQueue();
@@ -148,7 +145,7 @@ export default function App() {
         }
 
         if (!silent) {
-          showFeedback(`Dados atualizados! ${reconciled.teachers.length} docente(s), ${reconciled.classGroups.length} turma(s) e ${reconciled.meetings.length} reunião(ões) carregados.`);
+          showFeedback('Dados atualizados e sincronizados com a planilha do Google Sheets com sucesso!', 'success');
         }
       } else if (!silent && data.error) {
         showFeedback(`Erro ao carregar dados: ${data.error}`, 'error');
@@ -328,33 +325,37 @@ export default function App() {
     meetings?: BiweeklyMeeting[];
     actions?: PedagogicalAction[];
   }) => {
-    // Reconcile remote loaded data with current local state & queue
-    const reconciled = syncQueueService.reconcileAll(
-      loaded,
-      {
-        teachers,
-        classGroups,
-        subjects,
-        bimonthlyPlans,
-        meetings,
-        actions
-      }
-    );
-
-    setTeachers(reconciled.teachers);
-    setSubjects(reconciled.subjects);
-    setClassGroups(reconciled.classGroups);
-    setBimonthlyPlans(reconciled.bimonthlyPlans);
-    setMeetings(reconciled.meetings);
-    setActions(reconciled.actions);
-
-    // Save reconciled data to local cache
-    saveLocalData(STORAGE_KEYS.TEACHERS, reconciled.teachers);
-    saveLocalData(STORAGE_KEYS.SUBJECTS, reconciled.subjects);
-    saveLocalData(STORAGE_KEYS.CLASSES, reconciled.classGroups);
-    saveLocalData(STORAGE_KEYS.PLANS, reconciled.bimonthlyPlans);
-    saveLocalData(STORAGE_KEYS.MEETINGS, reconciled.meetings);
-    saveLocalData(STORAGE_KEYS.ACTIONS, reconciled.actions);
+    // Reconcile remote loaded data with current latest state via functional updaters
+    setTeachers(prev => {
+      const rec = syncQueueService.reconcileWithRemote('teacher', loaded.teachers || [], prev);
+      saveLocalData(STORAGE_KEYS.TEACHERS, rec);
+      return rec;
+    });
+    setSubjects(prev => {
+      const rec = syncQueueService.reconcileWithRemote('subject', loaded.subjects || [], prev);
+      saveLocalData(STORAGE_KEYS.SUBJECTS, rec);
+      return rec;
+    });
+    setClassGroups(prev => {
+      const rec = syncQueueService.reconcileWithRemote('class', loaded.classGroups || [], prev);
+      saveLocalData(STORAGE_KEYS.CLASSES, rec);
+      return rec;
+    });
+    setBimonthlyPlans(prev => {
+      const rec = syncQueueService.reconcileWithRemote('plan', loaded.bimonthlyPlans || [], prev);
+      saveLocalData(STORAGE_KEYS.PLANS, rec);
+      return rec;
+    });
+    setMeetings(prev => {
+      const rec = syncQueueService.reconcileWithRemote('meeting', loaded.meetings || [], prev);
+      saveLocalData(STORAGE_KEYS.MEETINGS, rec);
+      return rec;
+    });
+    setActions(prev => {
+      const rec = syncQueueService.reconcileWithRemote('action', loaded.actions || [], prev);
+      saveLocalData(STORAGE_KEYS.ACTIONS, rec);
+      return rec;
+    });
 
     setIsSheetsConfigured(true);
 

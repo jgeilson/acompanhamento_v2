@@ -122,7 +122,7 @@ export interface TopicProgressItem {
 }
 
 // Verificação de Encaminhamentos Anteriores
-export type ActionVerificationStatus = 'SUPERADA' | 'PARCIALMENTE_SUPERADA' | 'CONTINUA_PRESENTE';
+export type ActionVerificationStatus = 'SUPERADA' | 'PARCIALMENTE_SUPERADA' | 'CONTINUA_PRESENTE' | 'PENDENTE_AVALIACAO';
 
 export interface PreviousActionVerification {
   actionId: string;

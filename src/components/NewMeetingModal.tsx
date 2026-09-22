@@ -143,7 +143,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         actionId: p.id,
         actionDescription: p.description,
         previousStatus: p.status,
-        verificationResult: 'PARCIALMENTE_SUPERADA' as ActionVerificationStatus,
+        verificationResult: 'PENDENTE_AVALIACAO' as ActionVerificationStatus,
         notes: ''
       })));
     }
@@ -196,6 +196,23 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   const [selectedReasons, setSelectedReasons] = useState<PedagogicalReasonType[]>(['DIFICULDADE_APRENDIZAGEM_RETOMADA']);
   const [pedagogicalContextNotes, setPedagogicalContextNotes] = useState<string>('');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!selectedTeacherId || !selectedSubjectId || !selectedClassGroupId) {
+        alert('Por favor, selecione o docente, a disciplina e a turma antes de prosseguir.');
+        return;
+      }
+    }
+    if (currentStep === 2) {
+      const unverifiedCount = previousVerifications.filter(v => v.verificationResult === 'PENDENTE_AVALIACAO').length;
+      if (unverifiedCount > 0) {
+        alert(`Atenção: Existe(m) ${unverifiedCount} encaminhamento(s) anterior(es) pendente(s) de avaliação. Selecione para cada item se foi "Dificuldade Superada", "Parcialmente Superada" ou "Continua Presente" antes de avançar.`);
+        return;
+      }
+    }
+    setCurrentStep(prev => prev + 1);
+  };
 
   const primaryReason = selectedReasons[0] || 'RITMO_ADEQUADO';
 
@@ -543,10 +560,28 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
               {previousVerifications.length > 0 ? (
                 <div className="space-y-3">
                   {previousVerifications.map((item, index) => (
-                    <div key={item.actionId} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
-                      <div className="font-bold text-slate-900 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        <span>"{item.actionDescription}"</span>
+                    <div 
+                      key={item.actionId} 
+                      className={`p-4 rounded-xl border space-y-3 text-xs transition-all ${
+                        item.verificationResult === 'PENDENTE_AVALIACAO'
+                          ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/30'
+                          : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="font-bold text-slate-900 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            item.verificationResult === 'PENDENTE_AVALIACAO'
+                              ? 'bg-amber-500 animate-ping'
+                              : 'bg-indigo-500'
+                          }`} />
+                          <span className="text-slate-800 font-bold">"{item.actionDescription}"</span>
+                        </div>
+                        {item.verificationResult === 'PENDENTE_AVALIACAO' && (
+                          <span className="text-[10px] font-black text-amber-800 bg-amber-200/80 border border-amber-400/60 px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs">
+                            ⚠️ Avaliação Pendente
+                          </span>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
@@ -857,7 +892,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
           {currentStep < 5 ? (
             <button
               type="button"
-              onClick={() => setCurrentStep(prev => prev + 1)}
+              onClick={handleNextStep}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <span>Próximo Passo</span>
