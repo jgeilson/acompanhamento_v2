@@ -12,7 +12,8 @@ import {
   Search,
   Edit2,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Filter
 } from 'lucide-react';
 import { 
   BimonthlyPlan, 
@@ -173,65 +174,74 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
       </div>
 
       {/* Selectors Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-        
-        {/* Teacher */}
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Professor(a):</label>
-          <select
-            value={selectedTeacherId}
-            onChange={(e) => setSelectedTeacherId(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-semibold focus:bg-white"
-          >
-            {teachers.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4.5 rounded-2xl border border-indigo-900/80 shadow-md space-y-2.5">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-300 uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Painel de Seleção da Matriz de Planejamento</span>
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">Selecione para visualizar a matriz do bimestre</span>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          
+          {/* Teacher */}
+          <div>
+            <label className="font-extrabold text-indigo-200 block mb-1 text-[11px]">Professor(a):</label>
+            <select
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              className="w-full bg-slate-800/90 text-white border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-inner"
+            >
+              {teachers.map(t => (
+                <option key={t.id} value={t.id} className="bg-slate-900 text-white">{t.name}</option>
+              ))}
+            </select>
+          </div>
 
-        {/* Subject */}
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Disciplina:</label>
-          <select
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white"
-          >
-            {availableSubjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+          {/* Subject */}
+          <div>
+            <label className="font-extrabold text-indigo-200 block mb-1 text-[11px]">Disciplina:</label>
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="w-full bg-slate-800/90 text-white border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-inner"
+            >
+              {availableSubjects.map(s => (
+                <option key={s.id} value={s.id} className="bg-slate-900 text-white">{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class Group */}
+          <div>
+            <label className="font-extrabold text-indigo-200 block mb-1 text-[11px]">Turma:</label>
+            <select
+              value={selectedClassGroupId}
+              onChange={(e) => setSelectedClassGroupId(e.target.value)}
+              className="w-full bg-slate-800/90 text-white border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-inner"
+            >
+              {availableClassGroups.map(c => (
+                <option key={c.id} value={c.id} className="bg-slate-900 text-white">{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Bimester */}
+          <div>
+            <label className="font-extrabold text-indigo-200 block mb-1 text-[11px]">Bimestre:</label>
+            <select
+              value={selectedBimester}
+              onChange={(e) => setSelectedBimester(parseInt(e.target.value, 10) as any)}
+              className="w-full bg-slate-800/90 text-white border border-slate-700/80 rounded-xl px-3 py-2.5 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-inner"
+            >
+              <option value={1} className="bg-slate-900 text-white">1º Bimestre</option>
+              <option value={2} className="bg-slate-900 text-white">2º Bimestre</option>
+              <option value={3} className="bg-slate-900 text-white">3º Bimestre</option>
+              <option value={4} className="bg-slate-900 text-white">4º Bimestre</option>
+            </select>
+          </div>
+
         </div>
-
-        {/* Class Group */}
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Turma:</label>
-          <select
-            value={selectedClassGroupId}
-            onChange={(e) => setSelectedClassGroupId(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white"
-          >
-            {availableClassGroups.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Bimester */}
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Bimestre:</label>
-          <select
-            value={selectedBimester}
-            onChange={(e) => setSelectedBimester(parseInt(e.target.value, 10) as any)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-bold focus:bg-white"
-          >
-            <option value={1}>1º Bimestre</option>
-            <option value={2}>2º Bimestre</option>
-            <option value={3}>3º Bimestre</option>
-            <option value={4}>4º Bimestre</option>
-          </select>
-        </div>
-
       </div>
 
       {/* Plan Details Display */}

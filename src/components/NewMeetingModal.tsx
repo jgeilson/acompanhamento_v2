@@ -323,8 +323,10 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         subjectName: selectedSub?.name || 'Disciplina',
         classGroupId: selectedClassGroupId,
         classGroupName: selectedClass?.name || 'Turma',
+        problemContext: pedagogicalContextNotes || undefined,
         description: a.description,
         category: a.category,
+        responsible: 'Professor',
         createdDate: meetingDate,
         targetMeetingPeriod: a.targetMeetingPeriod,
         status: 'PENDENTE'

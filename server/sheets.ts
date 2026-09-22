@@ -332,8 +332,8 @@ async function ensureSheetHeaders(sheets: any, spreadsheetId: string) {
     },
     {
       tab: 'Encaminhamentos',
-      range: 'Encaminhamentos!A1:M1',
-      values: [['ID Encaminhamento', 'ID Reunião', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Descrição da Ação', 'Categoria', 'Data Criação', 'Previsão Retomada', 'Status']]
+      range: 'Encaminhamentos!A1:R1',
+      values: [['ID Encaminhamento', 'ID Reunião', 'ID Prof', 'Professor', 'ID Disciplina', 'Disciplina', 'ID Turma', 'Turma', 'Descrição da Ação', 'Categoria', 'Data Criação', 'Previsão Retomada', 'Status', 'Diagnóstico Origem', 'Responsável', 'Prazo Limite', 'Resultado Evidências', 'Histórico JSON']]
     },
     {
       tab: 'Configurações',
@@ -507,11 +507,16 @@ export async function syncAllToSheets(data: {
       act.subjectName || '',
       act.classGroupId || '',
       act.classGroupName || '',
-      act.description,
-      act.category,
-      act.createdDate,
-      act.targetMeetingPeriod,
-      act.status || 'PENDENTE'
+      act.description || '',
+      act.category || 'RECOMPOSICAO',
+      act.createdDate || '',
+      act.targetMeetingPeriod || '',
+      act.status || 'PENDENTE',
+      act.problemContext || '',
+      act.responsible || 'Professor',
+      act.dueDate || '',
+      act.resultNotes || '',
+      JSON.stringify(act.history || [])
     ]);
     await sheets.spreadsheets.values.update({
       spreadsheetId,
@@ -676,7 +681,12 @@ export async function upsertActionInSheet(act: any, config?: GoogleSheetsConfig)
     act.category || 'OUTROS',
     act.createdDate || new Date().toISOString().split('T')[0],
     act.targetMeetingPeriod || 'Próxima Reunião',
-    act.status || 'PENDENTE'
+    act.status || 'PENDENTE',
+    act.problemContext || '',
+    act.responsible || 'Professor',
+    act.dueDate || '',
+    act.resultNotes || '',
+    JSON.stringify(act.history || [])
   ];
 
   const now = new Date().toISOString();
@@ -685,7 +695,7 @@ export async function upsertActionInSheet(act: any, config?: GoogleSheetsConfig)
   if (existingRow > 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Encaminhamentos!A${existingRow}:M${existingRow}`,
+      range: `Encaminhamentos!A${existingRow}:R${existingRow}`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [row] }
     });
@@ -939,7 +949,12 @@ export async function appendMeetingsToSheet(meetings: any[], config?: GoogleShee
         act.category,
         act.createdDate || m.meetingDate,
         act.targetMeetingPeriod,
-        act.status || 'PENDENTE'
+        act.status || 'PENDENTE',
+        act.problemContext || m.pedagogicalContextNotes || '',
+        act.responsible || 'Professor',
+        act.dueDate || '',
+        act.resultNotes || '',
+        JSON.stringify(act.history || [])
       ]);
     });
   });
@@ -992,7 +1007,7 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     getTabValues('Disciplinas', 'A2:E1000'),
     getTabValues('Planejamento', 'A2:M3000'),
     getTabValues('Reuniões', 'A2:R2000'),
-    getTabValues('Encaminhamentos', 'A2:M2000'),
+    getTabValues('Encaminhamentos', 'A2:R2000'),
     getTabValues('Configurações', 'A2:B100'),
     getTabValues('Configuracoes', 'A2:B100'),
     getTabValues('Configuração', 'A2:B100')
@@ -1142,6 +1157,13 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
     const description = clean(row[8]);
     const id = clean(row[0]) || (description ? `act-${slugify(description).slice(0, 10)}-${index + 1}` : `act-${index + 1}`);
 
+    let history: any[] = [];
+    try {
+      if (row[17]) {
+        history = JSON.parse(row[17]);
+      }
+    } catch {}
+
     return {
       id,
       meetingId: clean(row[1]),
@@ -1155,7 +1177,12 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
       category: clean(row[9]) || 'OUTROS',
       createdDate: clean(row[10]) || new Date().toISOString().split('T')[0],
       targetMeetingPeriod: clean(row[11]) || 'Próxima Reunião',
-      status: clean(row[12]) || 'PENDENTE'
+      status: clean(row[12]) || 'PENDENTE',
+      problemContext: clean(row[13]) || undefined,
+      responsible: clean(row[14]) || 'Professor',
+      dueDate: clean(row[15]) || undefined,
+      resultNotes: clean(row[16]) || undefined,
+      history: Array.isArray(history) ? history : []
     };
   }).filter(a => a.description);
 

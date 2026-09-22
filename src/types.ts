@@ -140,6 +140,14 @@ export type ActionCategory =
   | 'ATIVIDADE_DIFERENCIADA' 
   | 'OUTRO';
 
+export interface ActionCycleEntry {
+  id: string;
+  date: string;
+  status: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA' | 'PARCIALMENTE_SUPERADA';
+  resultNotes: string;
+  verifiedBy?: string;
+}
+
 export interface PedagogicalAction {
   id: string;
   meetingId: string;
@@ -154,6 +162,13 @@ export interface PedagogicalAction {
   createdDate: string;
   targetMeetingPeriod: string;
   status: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA';
+  
+  // Ciclo & História Pedagógica
+  problemContext?: string;
+  responsible?: string;
+  dueDate?: string;
+  resultNotes?: string;
+  history?: ActionCycleEntry[];
 }
 
 // Periodicidade / Frequência da Reunião de Acompanhamento

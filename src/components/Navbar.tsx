@@ -100,13 +100,25 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => setActiveTab('meetings')}
             className={`flex items-center gap-2 px-3 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
-              activeTab === 'meetings' || activeTab === 'timeline'
+              activeTab === 'meetings'
                 ? 'border-indigo-500 text-indigo-400 font-semibold'
                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
             <Calendar className="w-4 h-4" />
             <span>Reuniões</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex items-center gap-2 px-3 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === 'timeline'
+                ? 'border-indigo-500 text-indigo-400 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Linha do Tempo</span>
           </button>
 
           <button

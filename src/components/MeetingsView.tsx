@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Users,
   BookOpen,
-  History,
   Trash2,
   AlertTriangle
 } from 'lucide-react';
@@ -24,7 +23,6 @@ import {
   MEETING_PERIODICITY_OPTIONS,
   MeetingPeriodicity 
 } from '../types';
-import { PedagogicalTimelineView } from './PedagogicalTimelineView';
 
 interface MeetingsViewProps {
   meetings: BiweeklyMeeting[];
@@ -45,7 +43,6 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
   onSelectMeetingDetail,
   onDeleteMeeting
 }) => {
-  const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [meetingToDelete, setMeetingToDelete] = useState<BiweeklyMeeting | null>(null);
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('');
@@ -80,131 +77,110 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
     <div className="space-y-6">
       
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-sm border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-2xl shadow-sm border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-indigo-500/20 text-indigo-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-indigo-400/30 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5" /> Atas & Encontros
+            </span>
+          </div>
           <h2 className="text-2xl font-bold font-display text-slate-100">
             Reuniões de Acompanhamento
           </h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Gerencie e consulte todas as atas registradas com o corpo docente.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-slate-800/90 p-1 rounded-xl border border-slate-700">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'grid'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Visão Geral</span>
-            </button>
-            <button
-              onClick={() => setViewMode('timeline')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                viewMode === 'timeline'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Linha do Tempo</span>
-            </button>
-          </div>
-
-          <button
-            onClick={onOpenNewMeeting}
-            className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0"
-          >
-            <PlusCircle className="w-4 h-4 text-indigo-200" />
-            <span>Nova Reunião</span>
-          </button>
-        </div>
+        <button
+          onClick={onOpenNewMeeting}
+          className="bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0 self-start sm:self-auto"
+        >
+          <PlusCircle className="w-4 h-4 text-indigo-200" />
+          <span>Nova Reunião</span>
+        </button>
       </div>
 
-      {viewMode === 'timeline' ? (
-        <PedagogicalTimelineView
-          meetings={meetings}
-          classGroups={classGroups}
-          subjects={subjects}
-          onSelectMeetingDetail={onSelectMeetingDetail}
-          hideHeaderBanner={true}
-        />
-      ) : (
-        <>
-          {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-        
-        {/* Search */}
-        <div className="relative lg:col-span-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Buscar por professor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500"
-          />
+      {/* Filter Bar */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4.5 rounded-2xl border border-indigo-900/80 shadow-md space-y-2.5">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <span className="flex items-center gap-1.5 text-[11px] font-extrabold text-indigo-300 uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Filtros de Busca e Seleção de Reuniões</span>
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">Selecione para filtrar os encontros cadastrados</span>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+          
+          {/* Search */}
+          <div className="relative lg:col-span-1">
+            <Search className="w-4 h-4 text-indigo-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="Buscar por professor..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-slate-800/90 text-white placeholder-slate-400 border border-slate-700/80 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400 outline-none shadow-inner"
+            />
+          </div>
 
-        {/* Teacher Filter */}
-        <div>
-          <select
-            value={selectedTeacherFilter}
-            onChange={(e) => setSelectedTeacherFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white"
-          >
-            <option value="">Todos os Professores</option>
-            {teachers.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+          {/* Teacher Filter */}
+          <div>
+            <select
+              value={selectedTeacherFilter}
+              onChange={(e) => setSelectedTeacherFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-800/90 text-white border border-slate-700/80 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer shadow-inner"
+            >
+              <option value="" className="bg-slate-900 text-white">Todos os Professores</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id} className="bg-slate-900 text-white">{t.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subject Filter */}
+          <div>
+            <select
+              value={selectedSubjectFilter}
+              onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-800/90 text-white border border-slate-700/80 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer shadow-inner"
+            >
+              <option value="" className="bg-slate-900 text-white">Todas as Disciplinas</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id} className="bg-slate-900 text-white">{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Class Filter */}
+          <div>
+            <select
+              value={selectedClassFilter}
+              onChange={(e) => setSelectedClassFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-800/90 text-white border border-slate-700/80 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer shadow-inner"
+            >
+              <option value="" className="bg-slate-900 text-white">Todas as Turmas</option>
+              {classGroups.map(c => (
+                <option key={c.id} value={c.id} className="bg-slate-900 text-white">{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Periodicity Filter */}
+          <div>
+            <select
+              value={selectedPeriodicityFilter}
+              onChange={(e) => setSelectedPeriodicityFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-slate-800/90 text-white border border-slate-700/80 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer shadow-inner"
+            >
+              <option value="" className="bg-slate-900 text-white">Todas as Frequências</option>
+              {MEETING_PERIODICITY_OPTIONS.map(p => (
+                <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.label}</option>
+              ))}
+            </select>
+          </div>
+
         </div>
-
-        {/* Subject Filter */}
-        <div>
-          <select
-            value={selectedSubjectFilter}
-            onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white"
-          >
-            <option value="">Todas as Disciplinas</option>
-            {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Class Filter */}
-        <div>
-          <select
-            value={selectedClassFilter}
-            onChange={(e) => setSelectedClassFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white"
-          >
-            <option value="">Todas as Turmas</option>
-            {classGroups.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Periodicity Filter */}
-        <div>
-          <select
-            value={selectedPeriodicityFilter}
-            onChange={(e) => setSelectedPeriodicityFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:bg-white font-semibold"
-          >
-            <option value="">Todas as Frequências</option>
-            {MEETING_PERIODICITY_OPTIONS.map(p => (
-              <option key={p.id} value={p.id}>{p.label}</option>
-            ))}
-          </select>
-        </div>
-
       </div>
 
       {/* Meetings Grid */}
@@ -321,8 +297,6 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
             Não há registros correspondentes aos filtros selecionados. Tente ajustar os parâmetros de busca ou inicie uma nova reunião.
           </p>
         </div>
-      )}
-        </>
       )}
 
       {/* Delete Meeting Confirmation Modal */}

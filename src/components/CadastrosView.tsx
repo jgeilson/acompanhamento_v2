@@ -15,7 +15,8 @@ import {
   Check, 
   X,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  History
 } from 'lucide-react';
 import { Teacher, Subject, ClassGroup, BimonthlyPlan, BiweeklyMeeting } from '../types';
 
@@ -34,6 +35,7 @@ interface CadastrosViewProps {
   onAddSubject: (subject: Subject) => void;
   onUpdateSubject: (subject: Subject) => void;
   onDeleteSubject: (subjectId: string) => void;
+  onViewTeacherTimeline?: (teacherId: string) => void;
 }
 
 type CadastroSubTab = 'teachers' | 'classes' | 'subjects';
@@ -52,7 +54,8 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
   onDeleteClassGroup,
   onAddSubject,
   onUpdateSubject,
-  onDeleteSubject
+  onDeleteSubject,
+  onViewTeacherTimeline
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<CadastroSubTab>('teachers');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -458,10 +461,24 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Footer Stats */}
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                    <span>{teacherPlans.length} planejamentos</span>
-                    <span className="font-semibold text-indigo-600">{teacherMeetings.length} reuniões</span>
+                  {/* Footer Stats & Trajectory Link */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <div className="text-slate-500 space-x-2">
+                      <span>{teacherPlans.length} planos</span>
+                      <span>•</span>
+                      <span className="font-semibold text-slate-700">{teacherMeetings.length} reuniões</span>
+                    </div>
+
+                    {onViewTeacherTimeline && (
+                      <button
+                        onClick={() => onViewTeacherTimeline(teacher.id)}
+                        className="font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors hover:underline"
+                        title={`Ver Linha do Tempo e Trajetória de ${teacher.name}`}
+                      >
+                        <span>Ver Trajetória</span>
+                        <History className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

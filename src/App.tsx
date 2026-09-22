@@ -72,6 +72,7 @@ export default function App() {
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
   const [selectedDetailMeeting, setSelectedDetailMeeting] = useState<BiweeklyMeeting | null>(null);
   const [initialTeacherForModal, setInitialTeacherForModal] = useState<string | undefined>(undefined);
+  const [selectedTimelineTeacherId, setSelectedTimelineTeacherId] = useState<string | undefined>(undefined);
 
   const showFeedback = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setSyncFeedback({ message, type });
@@ -446,7 +447,7 @@ export default function App() {
           />
         )}
 
-        {(activeTab === 'meetings' || activeTab === 'timeline') && (
+        {activeTab === 'meetings' && (
           <MeetingsView
             meetings={meetings}
             teachers={teachers}
@@ -458,6 +459,18 @@ export default function App() {
             }}
             onSelectMeetingDetail={setSelectedDetailMeeting}
             onDeleteMeeting={handleDeleteMeeting}
+          />
+        )}
+
+        {activeTab === 'timeline' && (
+          <PedagogicalTimelineView
+            meetings={meetings}
+            teachers={teachers}
+            subjects={subjects}
+            classGroups={classGroups}
+            plans={bimonthlyPlans}
+            onSelectMeetingDetail={setSelectedDetailMeeting}
+            initialTeacherId={selectedTimelineTeacherId}
           />
         )}
 
@@ -502,6 +515,10 @@ export default function App() {
             onAddSubject={handleAddSubject}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
+            onViewTeacherTimeline={(tId) => {
+              setSelectedTimelineTeacherId(tId);
+              setActiveTab('timeline');
+            }}
           />
         )}
 
