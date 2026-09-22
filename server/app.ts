@@ -5,6 +5,11 @@ import {
   testAndSetupSheets,
   appendMeetingsToSheet,
   appendMeetingToSheet,
+  appendPlanToSheet,
+  appendTeacherToSheet,
+  appendClassToSheet,
+  appendSubjectToSheet,
+  appendActionToSheet,
   updateActionStatusInSheet,
   readDataFromSheet,
   syncAllToSheets,
@@ -203,6 +208,96 @@ apiRouter.post('/sheets/save-meeting', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: error.message || 'Falha ao registrar reunião na Planilha Google.',
+    });
+  }
+});
+
+apiRouter.post('/sheets/save-plan', async (req, res) => {
+  try {
+    const { plan, config } = req.body || {};
+    if (!plan) {
+      return res.status(400).json({ error: 'Planejamento não fornecido.' });
+    }
+
+    const result = await appendPlanToSheet(plan, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar planejamento na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar planejamento na Planilha Google.',
+    });
+  }
+});
+
+apiRouter.post('/sheets/save-teacher', async (req, res) => {
+  try {
+    const { teacher, config } = req.body || {};
+    if (!teacher) {
+      return res.status(400).json({ error: 'Professor não fornecido.' });
+    }
+
+    const result = await appendTeacherToSheet(teacher, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar professor na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar professor na Planilha Google.',
+    });
+  }
+});
+
+apiRouter.post('/sheets/save-class', async (req, res) => {
+  try {
+    const { classGroup, config } = req.body || {};
+    if (!classGroup) {
+      return res.status(400).json({ error: 'Turma não fornecida.' });
+    }
+
+    const result = await appendClassToSheet(classGroup, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar turma na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar turma na Planilha Google.',
+    });
+  }
+});
+
+apiRouter.post('/sheets/save-subject', async (req, res) => {
+  try {
+    const { subject, config } = req.body || {};
+    if (!subject) {
+      return res.status(400).json({ error: 'Disciplina não fornecida.' });
+    }
+
+    const result = await appendSubjectToSheet(subject, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar disciplina na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar disciplina na Planilha Google.',
+    });
+  }
+});
+
+apiRouter.post('/sheets/save-action', async (req, res) => {
+  try {
+    const { action, config } = req.body || {};
+    if (!action) {
+      return res.status(400).json({ error: 'Encaminhamento não fornecido.' });
+    }
+
+    const result = await appendActionToSheet(action, config);
+    return res.json({ ...result });
+  } catch (error: any) {
+    console.error('Erro ao salvar encaminhamento na Planilha Google:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Falha ao registrar encaminhamento na Planilha Google.',
     });
   }
 });

@@ -206,8 +206,8 @@ export default function App() {
 
   // Handlers
   const handleSaveMeeting = async (newMeeting: BiweeklyMeeting) => {
-    const updatedMeetings = [newMeeting, ...meetings];
-    const updatedActions = newMeeting.newActions.length > 0 ? [...newMeeting.newActions, ...actions] : actions;
+    const updatedMeetings = [...meetings, newMeeting];
+    const updatedActions = newMeeting.newActions.length > 0 ? [...actions, ...newMeeting.newActions] : actions;
 
     setMeetings(updatedMeetings);
     setActions(updatedActions);
@@ -225,7 +225,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback('Reunião gravada com sucesso!');
+        showFeedback('Reunião gravada com sucesso no final da planilha!');
         return;
       }
     } catch {
@@ -244,10 +244,27 @@ export default function App() {
   };
 
   // CRUD Handlers: Teachers
-  const handleAddTeacher = (newTeacher: Teacher) => {
+  const handleAddTeacher = async (newTeacher: Teacher) => {
     const next = [...teachers, newTeacher];
     setTeachers(next);
     localStorage.setItem('local_teachers', JSON.stringify(next));
+
+    const config = getSheetsConfig();
+    try {
+      const res = await fetch('/api/sheets/save-teacher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacher: newTeacher, config })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) no final da planilha!`);
+        return;
+      }
+    } catch {
+      // Fallback to autoSyncToSheets
+    }
+
     showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) com sucesso!`);
     autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
   };
@@ -270,10 +287,27 @@ export default function App() {
   };
 
   // CRUD Handlers: Classes
-  const handleAddClassGroup = (newClass: ClassGroup) => {
+  const handleAddClassGroup = async (newClass: ClassGroup) => {
     const next = [...classGroups, newClass];
     setClassGroups(next);
     localStorage.setItem('local_classes', JSON.stringify(next));
+
+    const config = getSheetsConfig();
+    try {
+      const res = await fetch('/api/sheets/save-class', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classGroup: newClass, config })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(`Turma "${newClass.name}" cadastrada no final da planilha!`);
+        return;
+      }
+    } catch {
+      // Fallback to autoSyncToSheets
+    }
+
     showFeedback(`Turma "${newClass.name}" cadastrada com sucesso!`);
     autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
   };
@@ -296,10 +330,27 @@ export default function App() {
   };
 
   // CRUD Handlers: Subjects
-  const handleAddSubject = (newSubject: Subject) => {
+  const handleAddSubject = async (newSubject: Subject) => {
     const next = [...subjects, newSubject];
     setSubjects(next);
     localStorage.setItem('local_subjects', JSON.stringify(next));
+
+    const config = getSheetsConfig();
+    try {
+      const res = await fetch('/api/sheets/save-subject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: newSubject, config })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback(`Disciplina "${newSubject.name}" cadastrada no final da planilha!`);
+        return;
+      }
+    } catch {
+      // Fallback to autoSyncToSheets
+    }
+
     showFeedback(`Disciplina "${newSubject.name}" cadastrada com sucesso!`);
     autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
   };
@@ -322,16 +373,33 @@ export default function App() {
   };
 
   // CRUD Handlers: Pedagogical Actions
-  const handleAddAction = (newAction: PedagogicalAction) => {
-    const next = [newAction, ...actions];
+  const handleAddAction = async (newAction: PedagogicalAction) => {
+    const next = [...actions, newAction];
     setActions(next);
     localStorage.setItem('local_actions', JSON.stringify(next));
+
+    const config = getSheetsConfig();
+    try {
+      const res = await fetch('/api/sheets/save-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: newAction, config })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback('Encaminhamento gravado no final da planilha com sucesso!');
+        return;
+      }
+    } catch {
+      // Fallback to autoSyncToSheets
+    }
+
     showFeedback('Encaminhamento cadastrado com sucesso!');
     autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
   };
 
   // CRUD Handlers: Bimonthly Plans
-  const handleAddPlan = (newPlan: BimonthlyPlan) => {
+  const handleAddPlan = async (newPlan: BimonthlyPlan) => {
     // Check if plan already exists for same teacher, subject, bimester, and overlapping class
     const newClasses = (newPlan.classGroupIds && newPlan.classGroupIds.length > 0) ? newPlan.classGroupIds : [newPlan.classGroupId];
     const existsIndex = bimonthlyPlans.findIndex(p => {
@@ -341,15 +409,38 @@ export default function App() {
       const existingClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
       return newClasses.some(nc => existingClasses.includes(nc));
     });
+    
+    const isNew = existsIndex < 0;
     let next: BimonthlyPlan[];
-    if (existsIndex >= 0) {
+    if (!isNew) {
       next = [...bimonthlyPlans];
       next[existsIndex] = newPlan;
     } else {
-      next = [newPlan, ...bimonthlyPlans];
+      next = [...bimonthlyPlans, newPlan];
     }
+    
     setBimonthlyPlans(next);
     localStorage.setItem('local_plans', JSON.stringify(next));
+
+    const config = getSheetsConfig();
+
+    if (isNew) {
+      try {
+        const res = await fetch('/api/sheets/save-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: newPlan, config })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showFeedback('Planejamento gravado no final da planilha com sucesso!');
+          return;
+        }
+      } catch {
+        // Fallback to autoSyncToSheets
+      }
+    }
+
     showFeedback('Planejamento bimestral salvo com sucesso!');
     autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
   };

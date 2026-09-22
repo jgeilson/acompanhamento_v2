@@ -243,11 +243,8 @@ export const CadastrosView: React.FC<CadastrosViewProps> = ({
         <div>
           <h2 className="text-2xl font-bold font-display text-slate-100 flex items-center gap-2.5">
             <FolderOpen className="w-6 h-6 text-indigo-400" />
-            <span>Gestão de Cadastros (CRUD)</span>
+            <span>Gestão de Cadastros</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Cadastre, edite ou exclua professores, turmas e disciplinas da sua unidade escolar.
-          </p>
         </div>
 
         {/* Action Button based on active subtab */}

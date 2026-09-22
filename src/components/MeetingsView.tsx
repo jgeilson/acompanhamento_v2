@@ -74,7 +74,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
     }
 
     return true;
-  });
+  }).sort((a, b) => (b.meetingDate || '').localeCompare(a.meetingDate || ''));
 
   return (
     <div className="space-y-6">

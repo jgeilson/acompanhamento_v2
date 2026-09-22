@@ -539,6 +539,162 @@ export async function appendMeetingToSheet(meeting: any, config?: GoogleSheetsCo
 }
 
 /**
+ * Appends a single plan's topics after the last row in Planejamento tab
+ */
+export async function appendPlanToSheet(plan: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const classRef = (plan.classGroupIds && plan.classGroupIds.length > 0) ? plan.classGroupIds.join(', ') : plan.classGroupId;
+  const planRows: any[] = [];
+  (plan.periods || []).forEach((per: any) => {
+    (per.topics || []).forEach((top: any) => {
+      planRows.push([
+        plan.id,
+        plan.teacherId,
+        plan.subjectId,
+        classRef,
+        plan.bimester,
+        plan.year,
+        per.fortnightNumber,
+        per.periodTitle,
+        top.id,
+        top.title,
+        top.bnccCode || '',
+        top.estimatedHours || 0,
+        top.unitTitle || ''
+      ]);
+    });
+  });
+
+  if (planRows.length > 0) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Planejamento!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: {
+        values: planRows
+      }
+    });
+  }
+
+  return { success: true, appendedRows: planRows.length };
+}
+
+/**
+ * Appends a new teacher after the last row in Professores tab
+ */
+export async function appendTeacherToSheet(teacher: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    teacher.id,
+    teacher.name,
+    teacher.email || '',
+    teacher.avatarUrl || '',
+    (teacher.subjects || []).join(', '),
+    (teacher.classes || []).join(', ')
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Professores!A2',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  });
+
+  return { success: true };
+}
+
+/**
+ * Appends a new class after the last row in Turmas tab
+ */
+export async function appendClassToSheet(classGroup: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    classGroup.id,
+    classGroup.name,
+    classGroup.shift || 'MANHA',
+    classGroup.totalStudents || 0
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Turmas!A2',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  });
+
+  return { success: true };
+}
+
+/**
+ * Appends a new subject after the last row in Disciplinas tab
+ */
+export async function appendSubjectToSheet(subject: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    subject.id,
+    subject.name,
+    subject.code || '',
+    subject.color || '#2563eb',
+    subject.totalWorkloadHours || 80
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Disciplinas!A2',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  });
+
+  return { success: true };
+}
+
+/**
+ * Appends a single pedagogical action after the last row in Encaminhamentos tab
+ */
+export async function appendActionToSheet(act: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    act.id,
+    act.meetingId || '',
+    act.teacherId || '',
+    act.teacherName || '',
+    act.subjectId || '',
+    act.subjectName || '',
+    act.classGroupId || '',
+    act.classGroupName || '',
+    act.description,
+    act.category || 'OUTROS',
+    act.createdDate || new Date().toISOString().split('T')[0],
+    act.targetMeetingPeriod || 'Próxima Reunião',
+    act.status || 'PENDENTE'
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: 'Encaminhamentos!A2',
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    requestBody: { values: [row] }
+  });
+
+  return { success: true };
+}
+
+/**
  * Updates an action's status directly in the Encaminhamentos sheet
  */
 export async function updateActionStatusInSheet(actionId: string, newStatus: string, config?: GoogleSheetsConfig) {
