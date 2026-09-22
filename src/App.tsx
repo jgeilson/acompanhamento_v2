@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { DashboardView } from './components/DashboardView';
 import { MeetingsView } from './components/MeetingsView';
@@ -30,34 +30,36 @@ import {
   INITIAL_PEDAGOGICAL_ACTIONS 
 } from './data/initialData';
 
-function loadLocalData<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as unknown as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+import { 
+  STORAGE_KEYS, 
+  loadLocalData, 
+  saveLocalData, 
+  purgeLegacyCredentials,
+  sheetsService,
+  teachersService,
+  classesService,
+  subjectsService,
+  meetingsService,
+  plansService,
+  actionsService
+} from './services';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
   // Master State (with localStorage cache for offline/direct CRUD persistence)
-  const [teachers, setTeachers] = useState<Teacher[]>(() => loadLocalData('local_teachers', INITIAL_TEACHERS));
-  const [subjects, setSubjects] = useState<Subject[]>(() => loadLocalData('local_subjects', INITIAL_SUBJECTS));
-  const [classGroups, setClassGroups] = useState<ClassGroup[]>(() => loadLocalData('local_classes', INITIAL_CLASS_GROUPS));
-  const [bimonthlyPlans, setBimonthlyPlans] = useState<BimonthlyPlan[]>(() => loadLocalData('local_plans', INITIAL_BIMONTHLY_PLANS));
-  
-  const [meetings, setMeetings] = useState<BiweeklyMeeting[]>(() => loadLocalData('local_meetings', INITIAL_BIWEEKLY_MEETINGS));
-  const [actions, setActions] = useState<PedagogicalAction[]>(() => loadLocalData('local_actions', INITIAL_PEDAGOGICAL_ACTIONS));
+  const [teachers, setTeachers] = useState<Teacher[]>(() => loadLocalData(STORAGE_KEYS.TEACHERS, INITIAL_TEACHERS));
+  const [subjects, setSubjects] = useState<Subject[]>(() => loadLocalData(STORAGE_KEYS.SUBJECTS, INITIAL_SUBJECTS));
+  const [classGroups, setClassGroups] = useState<ClassGroup[]>(() => loadLocalData(STORAGE_KEYS.CLASSES, INITIAL_CLASS_GROUPS));
+  const [bimonthlyPlans, setBimonthlyPlans] = useState<BimonthlyPlan[]>(() => loadLocalData(STORAGE_KEYS.PLANS, INITIAL_BIMONTHLY_PLANS));
+  const [meetings, setMeetings] = useState<BiweeklyMeeting[]>(() => loadLocalData(STORAGE_KEYS.MEETINGS, INITIAL_BIWEEKLY_MEETINGS));
+  const [actions, setActions] = useState<PedagogicalAction[]>(() => loadLocalData(STORAGE_KEYS.ACTIONS, INITIAL_PEDAGOGICAL_ACTIONS));
 
   // App Settings from Sheet (Aba Configurações)
   const [appSettings, setAppSettings] = useState<AppSettings>(() => ({
-    coordinatorName: localStorage.getItem('default_coordinator_name') || 'Coordenação Pedagógica',
-    schoolName: localStorage.getItem('school_name') || '',
-    academicYear: localStorage.getItem('academic_year') || '2026'
+    coordinatorName: localStorage.getItem(STORAGE_KEYS.COORDINATOR_NAME) || 'Coordenação Pedagógica',
+    schoolName: localStorage.getItem(STORAGE_KEYS.SCHOOL_NAME) || '',
+    academicYear: localStorage.getItem(STORAGE_KEYS.ACADEMIC_YEAR) || '2026'
   }));
 
   // Sheets Sync State
@@ -71,24 +73,45 @@ export default function App() {
   const [selectedDetailMeeting, setSelectedDetailMeeting] = useState<BiweeklyMeeting | null>(null);
   const [initialTeacherForModal, setInitialTeacherForModal] = useState<string | undefined>(undefined);
 
-  const showFeedback = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showFeedback = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setSyncFeedback({ message, type });
     setTimeout(() => {
       setSyncFeedback(prev => prev?.message === message ? null : prev);
     }, 4000);
-  };
+  }, []);
+
+  // Background full sync helper
+  const syncFullDatasetToSheets = useCallback(async (
+    currentTeachers: Teacher[],
+    currentSubjects: Subject[],
+    currentClasses: ClassGroup[],
+    currentPlans: BimonthlyPlan[],
+    currentMeetings: BiweeklyMeeting[],
+    currentActions: PedagogicalAction[]
+  ) => {
+    try {
+      const res = await sheetsService.syncAll({
+        teachers: currentTeachers,
+        subjects: currentSubjects,
+        classGroups: currentClasses,
+        bimonthlyPlans: currentPlans,
+        meetings: currentMeetings,
+        actions: currentActions
+      });
+      if (res.success) {
+        showFeedback('Dados sincronizados com a nuvem com sucesso!');
+      }
+    } catch {
+      // Background sync silent fail / offline
+    }
+  }, [showFeedback]);
 
   // Function to load all data from Google Sheets
-  const loadDataFromSheets = async (silent = false) => {
+  const loadDataFromSheets = useCallback(async (silent = false) => {
     if (!silent) setIsSyncing(true);
 
     try {
-      const res = await fetch('/api/sheets/load-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-      const data = await res.json();
+      const data = await sheetsService.loadAll();
 
       if (data.success || Array.isArray(data.teachers)) {
         const loadedTeachers = data.teachers || [];
@@ -106,12 +129,12 @@ export default function App() {
         setActions(loadedActions);
 
         // Update local cache
-        localStorage.setItem('local_teachers', JSON.stringify(loadedTeachers));
-        localStorage.setItem('local_classes', JSON.stringify(loadedClasses));
-        localStorage.setItem('local_subjects', JSON.stringify(loadedSubjects));
-        localStorage.setItem('local_plans', JSON.stringify(loadedPlans));
-        localStorage.setItem('local_meetings', JSON.stringify(loadedMeetings));
-        localStorage.setItem('local_actions', JSON.stringify(loadedActions));
+        saveLocalData(STORAGE_KEYS.TEACHERS, loadedTeachers);
+        saveLocalData(STORAGE_KEYS.CLASSES, loadedClasses);
+        saveLocalData(STORAGE_KEYS.SUBJECTS, loadedSubjects);
+        saveLocalData(STORAGE_KEYS.PLANS, loadedPlans);
+        saveLocalData(STORAGE_KEYS.MEETINGS, loadedMeetings);
+        saveLocalData(STORAGE_KEYS.ACTIONS, loadedActions);
 
         if (data.settings) {
           const loadedSettings: AppSettings = {
@@ -121,13 +144,13 @@ export default function App() {
             raw: data.settings.raw || {}
           };
           if (loadedSettings.coordinatorName) {
-            localStorage.setItem('default_coordinator_name', loadedSettings.coordinatorName);
+            localStorage.setItem(STORAGE_KEYS.COORDINATOR_NAME, loadedSettings.coordinatorName);
           }
           if (loadedSettings.schoolName) {
-            localStorage.setItem('school_name', loadedSettings.schoolName);
+            localStorage.setItem(STORAGE_KEYS.SCHOOL_NAME, loadedSettings.schoolName);
           }
           if (loadedSettings.academicYear) {
-            localStorage.setItem('academic_year', loadedSettings.academicYear);
+            localStorage.setItem(STORAGE_KEYS.ACADEMIC_YEAR, loadedSettings.academicYear);
           }
           setAppSettings(loadedSettings);
         }
@@ -138,55 +161,18 @@ export default function App() {
       } else if (!silent && data.error) {
         showFeedback(`Erro ao carregar dados: ${data.error}`, 'error');
       }
-    } catch (err: any) {
+    } catch {
       if (!silent) showFeedback('Não foi possível conectar à Planilha.', 'error');
     } finally {
       if (!silent) setIsSyncing(false);
     }
-  };
-
-  // Auto-sync helper to push entire state to Google Sheets
-  const autoSyncToSheets = (
-    currentTeachers: Teacher[],
-    currentSubjects: Subject[],
-    currentClasses: ClassGroup[],
-    currentPlans: BimonthlyPlan[],
-    currentMeetings: BiweeklyMeeting[],
-    currentActions: PedagogicalAction[]
-  ) => {
-    fetch('/api/sheets/sync-all', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          teachers: currentTeachers,
-          subjects: currentSubjects,
-          classGroups: currentClasses,
-          bimonthlyPlans: currentPlans,
-          meetings: currentMeetings,
-          actions: currentActions
-        }
-      })
-    })
-      .then(res => res.json())
-      .then(result => {
-        if (result.success) {
-          showFeedback('Dados sincronizados com sucesso!');
-        }
-      })
-      .catch(() => {});
-  };
+  }, [showFeedback]);
 
   // Check connection status and auto-load on initial mount, purging any legacy browser credentials
-  React.useEffect(() => {
-    // Purge any legacy credentials from client browser localStorage for security
-    try {
-      localStorage.removeItem('gs_private_key');
-      localStorage.removeItem('gs_client_email');
-    } catch {}
+  useEffect(() => {
+    purgeLegacyCredentials();
 
-    fetch('/api/sheets/status')
-      .then(res => res.json())
+    sheetsService.getStatus()
       .then(status => {
         const configured = Boolean(status.isConfigured);
         setIsSheetsConfigured(configured);
@@ -196,297 +182,194 @@ export default function App() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [loadDataFromSheets]);
 
   // Calculations
   const pendingActionsCount = actions.filter(a => a.status !== 'SUPERADA').length;
 
-  // Handlers
+  // Handlers: Meetings
   const handleSaveMeeting = async (newMeeting: BiweeklyMeeting) => {
-    const updatedMeetings = [...meetings, newMeeting];
-    const updatedActions = newMeeting.newActions.length > 0 ? [...actions, ...newMeeting.newActions] : actions;
+    const { nextMeetings, nextActions } = meetingsService.add(meetings, actions, newMeeting);
+    setMeetings(nextMeetings);
+    setActions(nextActions);
 
-    setMeetings(updatedMeetings);
-    setActions(updatedActions);
-    localStorage.setItem('local_meetings', JSON.stringify(updatedMeetings));
-    localStorage.setItem('local_actions', JSON.stringify(updatedActions));
-
-    // Try granular append first
-    try {
-      const res = await fetch('/api/sheets/save-meeting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meeting: newMeeting })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback('Reunião gravada com sucesso no final da planilha!');
-        return;
-      }
-    } catch {
-      // Fallback to full sync
+    const sheetsRes = await meetingsService.saveToSheets(newMeeting);
+    if (sheetsRes.success) {
+      showFeedback('Reunião gravada com sucesso no final da planilha!');
+      return;
     }
 
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, updatedMeetings, updatedActions);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, nextActions);
   };
 
   const handleDeleteMeeting = (meetingId: string) => {
-    const nextMeetings = meetings.filter(m => m.id !== meetingId);
+    const nextMeetings = meetingsService.delete(meetings, meetingId);
     setMeetings(nextMeetings);
-    localStorage.setItem('local_meetings', JSON.stringify(nextMeetings));
     showFeedback('Reunião excluída com sucesso.');
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, actions);
   };
 
-  // CRUD Handlers: Teachers
+  // Handlers: Teachers
   const handleAddTeacher = async (newTeacher: Teacher) => {
-    const next = [...teachers, newTeacher];
+    const next = teachersService.add(teachers, newTeacher);
     setTeachers(next);
-    localStorage.setItem('local_teachers', JSON.stringify(next));
 
-    try {
-      const res = await fetch('/api/sheets/save-teacher', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher: newTeacher })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) no final da planilha!`);
-        return;
-      }
-    } catch {
-      // Fallback to autoSyncToSheets
+    const sheetsRes = await teachersService.saveToSheets(newTeacher);
+    if (sheetsRes.success) {
+      showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) no final da planilha!`);
+      return;
     }
 
     showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) com sucesso!`);
-    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
-    const next = teachers.map(t => t.id === updatedTeacher.id ? updatedTeacher : t);
+    const next = teachersService.update(teachers, updatedTeacher);
     setTeachers(next);
-    localStorage.setItem('local_teachers', JSON.stringify(next));
     showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a)!`);
-    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
     const deleted = teachers.find(t => t.id === teacherId);
-    const next = teachers.filter(t => t.id !== teacherId);
+    const next = teachersService.delete(teachers, teacherId);
     setTeachers(next);
-    localStorage.setItem('local_teachers', JSON.stringify(next));
     showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a).`);
-    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
   };
 
-  // CRUD Handlers: Classes
+  // Handlers: Classes
   const handleAddClassGroup = async (newClass: ClassGroup) => {
-    const next = [...classGroups, newClass];
+    const next = classesService.add(classGroups, newClass);
     setClassGroups(next);
-    localStorage.setItem('local_classes', JSON.stringify(next));
 
-    try {
-      const res = await fetch('/api/sheets/save-class', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classGroup: newClass })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback(`Turma "${newClass.name}" cadastrada no final da planilha!`);
-        return;
-      }
-    } catch {
-      // Fallback to autoSyncToSheets
+    const sheetsRes = await classesService.saveToSheets(newClass);
+    if (sheetsRes.success) {
+      showFeedback(`Turma "${newClass.name}" cadastrada no final da planilha!`);
+      return;
     }
 
     showFeedback(`Turma "${newClass.name}" cadastrada com sucesso!`);
-    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
   };
 
   const handleUpdateClassGroup = (updatedClass: ClassGroup) => {
-    const next = classGroups.map(c => c.id === updatedClass.id ? updatedClass : c);
+    const next = classesService.update(classGroups, updatedClass);
     setClassGroups(next);
-    localStorage.setItem('local_classes', JSON.stringify(next));
     showFeedback(`Turma "${updatedClass.name}" atualizada!`);
-    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
   };
 
   const handleDeleteClassGroup = (classId: string) => {
     const deleted = classGroups.find(c => c.id === classId);
-    const next = classGroups.filter(c => c.id !== classId);
+    const next = classesService.delete(classGroups, classId);
     setClassGroups(next);
-    localStorage.setItem('local_classes', JSON.stringify(next));
     showFeedback(`Turma "${deleted?.name || ''}" removida.`);
-    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
   };
 
-  // CRUD Handlers: Subjects
+  // Handlers: Subjects
   const handleAddSubject = async (newSubject: Subject) => {
-    const next = [...subjects, newSubject];
+    const next = subjectsService.add(subjects, newSubject);
     setSubjects(next);
-    localStorage.setItem('local_subjects', JSON.stringify(next));
 
-    try {
-      const res = await fetch('/api/sheets/save-subject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject: newSubject })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback(`Disciplina "${newSubject.name}" cadastrada no final da planilha!`);
-        return;
-      }
-    } catch {
-      // Fallback to autoSyncToSheets
+    const sheetsRes = await subjectsService.saveToSheets(newSubject);
+    if (sheetsRes.success) {
+      showFeedback(`Disciplina "${newSubject.name}" cadastrada no final da planilha!`);
+      return;
     }
 
     showFeedback(`Disciplina "${newSubject.name}" cadastrada com sucesso!`);
-    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
   };
 
   const handleUpdateSubject = (updatedSubject: Subject) => {
-    const next = subjects.map(s => s.id === updatedSubject.id ? updatedSubject : s);
+    const next = subjectsService.update(subjects, updatedSubject);
     setSubjects(next);
-    localStorage.setItem('local_subjects', JSON.stringify(next));
     showFeedback(`Disciplina "${updatedSubject.name}" atualizada!`);
-    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
   };
 
   const handleDeleteSubject = (subjectId: string) => {
     const deleted = subjects.find(s => s.id === subjectId);
-    const next = subjects.filter(s => s.id !== subjectId);
+    const next = subjectsService.delete(subjects, subjectId);
     setSubjects(next);
-    localStorage.setItem('local_subjects', JSON.stringify(next));
     showFeedback(`Disciplina "${deleted?.name || ''}" removida.`);
-    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+    syncFullDatasetToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
   };
 
-  // CRUD Handlers: Pedagogical Actions
+  // Handlers: Pedagogical Actions
   const handleAddAction = async (newAction: PedagogicalAction) => {
-    const next = [...actions, newAction];
+    const next = actionsService.add(actions, newAction);
     setActions(next);
-    localStorage.setItem('local_actions', JSON.stringify(next));
 
-    try {
-      const res = await fetch('/api/sheets/save-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: newAction })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback('Encaminhamento gravado no final da planilha com sucesso!');
-        return;
-      }
-    } catch {
-      // Fallback to autoSyncToSheets
+    const sheetsRes = await actionsService.saveToSheets(newAction);
+    if (sheetsRes.success) {
+      showFeedback('Encaminhamento gravado no final da planilha com sucesso!');
+      return;
     }
 
     showFeedback('Encaminhamento cadastrado com sucesso!');
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
   };
 
-  // CRUD Handlers: Bimonthly Plans
-  const handleAddPlan = async (newPlan: BimonthlyPlan) => {
-    // Check if plan already exists for same teacher, subject, bimester, and overlapping class
-    const newClasses = (newPlan.classGroupIds && newPlan.classGroupIds.length > 0) ? newPlan.classGroupIds : [newPlan.classGroupId];
-    const existsIndex = bimonthlyPlans.findIndex(p => {
-      if (p.teacherId !== newPlan.teacherId || p.subjectId !== newPlan.subjectId || Number(p.bimester) !== Number(newPlan.bimester)) {
-        return false;
-      }
-      const existingClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
-      return newClasses.some(nc => existingClasses.includes(nc));
-    });
-    
-    const isNew = existsIndex < 0;
-    let next: BimonthlyPlan[];
-    if (!isNew) {
-      next = [...bimonthlyPlans];
-      next[existsIndex] = newPlan;
-    } else {
-      next = [...bimonthlyPlans, newPlan];
+  const handleUpdateAction = (updatedAction: PedagogicalAction) => {
+    const next = actionsService.update(actions, updatedAction);
+    setActions(next);
+    showFeedback('Encaminhamento atualizado com sucesso!');
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+  };
+
+  const handleDeleteAction = (actionId: string) => {
+    const next = actionsService.delete(actions, actionId);
+    setActions(next);
+    showFeedback('Encaminhamento excluído.');
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+  };
+
+  const handleUpdateActionStatus = async (actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA') => {
+    const updatedActions = actionsService.updateStatus(actions, actionId, newStatus);
+    setActions(updatedActions);
+
+    const sheetsRes = await actionsService.updateStatusInSheets(actionId, newStatus);
+    if (sheetsRes.success) {
+      showFeedback('Status do encaminhamento atualizado com sucesso!');
+      return;
     }
-    
-    setBimonthlyPlans(next);
-    localStorage.setItem('local_plans', JSON.stringify(next));
+
+    syncFullDatasetToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, updatedActions);
+  };
+
+  // Handlers: Bimonthly Plans
+  const handleAddPlan = async (newPlan: BimonthlyPlan) => {
+    const { nextPlans, isNew } = plansService.addOrUpdate(bimonthlyPlans, newPlan);
+    setBimonthlyPlans(nextPlans);
 
     if (isNew) {
-      try {
-        const res = await fetch('/api/sheets/save-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan: newPlan })
-        });
-        const data = await res.json();
-        if (data.success) {
-          showFeedback('Planejamento gravado no final da planilha com sucesso!');
-          return;
-        }
-      } catch {
-        // Fallback to autoSyncToSheets
+      const sheetsRes = await plansService.saveToSheets(newPlan);
+      if (sheetsRes.success) {
+        showFeedback('Planejamento gravado no final da planilha com sucesso!');
+        return;
       }
     }
 
     showFeedback('Planejamento bimestral salvo com sucesso!');
-    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, nextPlans, meetings, actions);
   };
 
   const handleUpdatePlan = (updatedPlan: BimonthlyPlan) => {
-    const next = bimonthlyPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p);
+    const next = plansService.update(bimonthlyPlans, updatedPlan);
     setBimonthlyPlans(next);
-    localStorage.setItem('local_plans', JSON.stringify(next));
     showFeedback('Planejamento atualizado com sucesso!');
-    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, next, meetings, actions);
   };
 
   const handleDeletePlan = (planId: string) => {
-    const next = bimonthlyPlans.filter(p => p.id !== planId);
+    const next = plansService.delete(bimonthlyPlans, planId);
     setBimonthlyPlans(next);
-    localStorage.setItem('local_plans', JSON.stringify(next));
     showFeedback('Planejamento removido com sucesso.');
-    autoSyncToSheets(teachers, subjects, classGroups, next, meetings, actions);
-  };
-
-  const handleUpdateAction = (updatedAction: PedagogicalAction) => {
-    const next = actions.map(a => a.id === updatedAction.id ? updatedAction : a);
-    setActions(next);
-    localStorage.setItem('local_actions', JSON.stringify(next));
-    showFeedback('Encaminhamento atualizado com sucesso!');
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
-  };
-
-  const handleDeleteAction = (actionId: string) => {
-    const next = actions.filter(a => a.id !== actionId);
-    setActions(next);
-    localStorage.setItem('local_actions', JSON.stringify(next));
-    showFeedback('Encaminhamento excluído.');
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
-  };
-
-  const handleUpdateActionStatus = async (actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA') => {
-    const updatedActions = actions.map(a => a.id === actionId ? { ...a, status: newStatus } : a);
-    setActions(updatedActions);
-    localStorage.setItem('local_actions', JSON.stringify(updatedActions));
-
-    try {
-      const res = await fetch('/api/sheets/update-action-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionId, newStatus })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showFeedback(`Encaminhamento atualizado com sucesso!`);
-        return;
-      }
-    } catch {
-      // Fallback
-    }
-
-    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, updatedActions);
+    syncFullDatasetToSheets(teachers, subjects, classGroups, next, meetings, actions);
   };
 
   const handleDataLoadedFromSheets = (loaded: {

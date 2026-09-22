@@ -23,6 +23,7 @@ import {
   BiweeklyMeeting, 
   PedagogicalAction 
 } from '../types';
+import { sheetsService, ServerSheetsStatus } from '../services/sheetsService';
 
 interface GoogleSheetsSyncModalProps {
   isOpen: boolean;
@@ -41,18 +42,6 @@ interface GoogleSheetsSyncModalProps {
     meetings?: BiweeklyMeeting[];
     actions?: PedagogicalAction[];
   }) => void;
-}
-
-interface ServerSheetsStatus {
-  isConfigured: boolean;
-  hasEmail?: boolean;
-  hasKey?: boolean;
-  hasSheetId?: boolean;
-  clientEmailMasked?: string;
-  spreadsheetIdMasked?: string;
-  spreadsheetId?: string;
-  spreadsheetUrl?: string;
-  error?: string;
 }
 
 export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
@@ -82,8 +71,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   const fetchStatus = async () => {
     setIsLoadingStatus(true);
     try {
-      const res = await fetch('/api/sheets/status');
-      const data: ServerSheetsStatus = await res.json();
+      const data = await sheetsService.getStatus();
       setServerStatus(data);
       if (data.isConfigured) {
         setConnectionStatus('success');
@@ -110,22 +98,16 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     setSyncResult(null);
 
     try {
-      const res = await fetch('/api/sheets/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
+      const data = await sheetsService.testConnection();
 
-      const data = await res.json();
-
-      if (res.ok && data?.success) {
+      if (data?.success) {
         setConnectionStatus('success');
         setSpreadsheetTitle(data.title || 'Planilha Google Conectada');
         setStatusMessage('Conexão autenticada pelo servidor com sucesso! Estrutura de abas verificada.');
         fetchStatus();
       } else {
         setConnectionStatus('error');
-        setStatusMessage(data?.error || `Falha ao autenticar no servidor (Status ${res.status}).`);
+        setStatusMessage(data?.error || 'Falha ao autenticar no servidor.');
       }
     } catch (err: any) {
       setConnectionStatus('error');
@@ -138,13 +120,7 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     setSyncResult(null);
 
     try {
-      const res = await fetch('/api/sheets/load-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-
-      const data = await res.json();
+      const data = await sheetsService.loadAll();
 
       if (data?.success || Array.isArray(data?.teachers)) {
         onDataLoaded({
@@ -178,22 +154,14 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     setSyncResult(null);
 
     try {
-      const res = await fetch('/api/sheets/sync-all', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          data: {
-            teachers,
-            subjects,
-            classGroups,
-            bimonthlyPlans,
-            meetings,
-            actions
-          }
-        })
+      const data = await sheetsService.syncAll({
+        teachers,
+        subjects,
+        classGroups,
+        bimonthlyPlans,
+        meetings,
+        actions
       });
-
-      const data = await res.json();
 
       if (data.success) {
         setSyncResult(`Sincronização total concluída! Todos os dados (${teachers.length} docentes, ${classGroups.length} turmas, ${bimonthlyPlans.length} planos, ${meetings.length} reuniões, ${actions.length} encaminhamentos) foram gravados nas abas da Planilha.`);
