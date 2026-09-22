@@ -9,6 +9,18 @@ import { syncQueueService } from './syncQueueService';
 
 export const teachersService = {
   /**
+   * Save/Upsert a teacher to Google Sheets via persistent queue
+   */
+  async saveToSheets(teacher: Teacher): Promise<{ success: boolean; error?: string }> {
+    try {
+      syncQueueService.enqueue('teacher', teacher.id, 'upsert', teacher);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Enqueue error' };
+    }
+  },
+
+  /**
    * Enqueue a teacher operation into the persistent queue
    */
   enqueueSync(teacher: Teacher): { queued: true; queueItemId: string } {

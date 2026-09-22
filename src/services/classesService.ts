@@ -9,6 +9,18 @@ import { syncQueueService } from './syncQueueService';
 
 export const classesService = {
   /**
+   * Save/Upsert a class group to Google Sheets via persistent queue
+   */
+  async saveToSheets(classGroup: ClassGroup): Promise<{ success: boolean; error?: string }> {
+    try {
+      syncQueueService.enqueue('class', classGroup.id, 'upsert', classGroup);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Enqueue error' };
+    }
+  },
+
+  /**
    * Enqueue a class group operation into the persistent queue
    */
   enqueueSync(classGroup: ClassGroup): { queued: true; queueItemId: string } {

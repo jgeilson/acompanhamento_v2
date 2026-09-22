@@ -9,6 +9,18 @@ import { syncQueueService } from './syncQueueService';
 
 export const meetingsService = {
   /**
+   * Save/Upsert a meeting to Google Sheets via persistent queue
+   */
+  async saveToSheets(meeting: BiweeklyMeeting): Promise<{ success: boolean; error?: string }> {
+    try {
+      syncQueueService.enqueue('meeting', meeting.id, 'upsert', meeting);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Enqueue error' };
+    }
+  },
+
+  /**
    * Enqueue a meeting operation into the persistent queue
    */
   enqueueSync(meeting: BiweeklyMeeting): { queued: true; queueItemId: string } {
@@ -22,7 +34,7 @@ export const meetingsService = {
     currentMeetings: BiweeklyMeeting[],
     currentActions: PedagogicalAction[],
     newMeeting: BiweeklyMeeting
-  ): { nextMeetings: BiweeklyMeeting[]; nextActions: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
+  ): { data: BiweeklyMeeting[]; nextMeetings: BiweeklyMeeting[]; nextActions: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const nextMeetings = [...currentMeetings, newMeeting];
     const nextActions = newMeeting.newActions && newMeeting.newActions.length > 0 
       ? [...currentActions, ...newMeeting.newActions] 
@@ -34,27 +46,27 @@ export const meetingsService = {
     // Enqueue meeting (which handles both meeting and its newActions idempotently)
     const sync = syncQueueService.enqueue('meeting', newMeeting.id, 'upsert', newMeeting);
 
-    return { nextMeetings, nextActions, sync };
+    return { data: nextMeetings, nextMeetings, nextActions, sync };
   },
 
   /**
    * Updates an existing meeting
    */
-  update(currentMeetings: BiweeklyMeeting[], updatedMeeting: BiweeklyMeeting): { data: BiweeklyMeeting[]; sync: { queued: true; queueItemId: string } } {
+  update(currentMeetings: BiweeklyMeeting[], updatedMeeting: BiweeklyMeeting): { data: BiweeklyMeeting[]; nextMeetings: BiweeklyMeeting[]; sync: { queued: true; queueItemId: string } } {
     const next = currentMeetings.map(m => m.id === updatedMeeting.id ? updatedMeeting : m);
     saveLocalData(STORAGE_KEYS.MEETINGS, next);
     const sync = syncQueueService.enqueue('meeting', updatedMeeting.id, 'upsert', updatedMeeting);
-    return { data: next, sync };
+    return { data: next, nextMeetings: next, sync };
   },
 
   /**
    * Removes a meeting by ID and updates localStorage
    */
-  delete(currentMeetings: BiweeklyMeeting[], meetingId: string): { data: BiweeklyMeeting[]; sync: { queued: true; queueItemId: string } } {
+  delete(currentMeetings: BiweeklyMeeting[], meetingId: string): { data: BiweeklyMeeting[]; nextMeetings: BiweeklyMeeting[]; sync: { queued: true; queueItemId: string } } {
     const next = currentMeetings.filter(m => m.id !== meetingId);
     saveLocalData(STORAGE_KEYS.MEETINGS, next);
     const sync = syncQueueService.enqueue('meeting', meetingId, 'delete', { id: meetingId });
-    return { data: next, sync };
+    return { data: next, nextMeetings: next, sync };
   }
 };
 

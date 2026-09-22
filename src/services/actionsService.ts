@@ -9,6 +9,33 @@ import { syncQueueService } from './syncQueueService';
 
 export const actionsService = {
   /**
+   * Save/Upsert a single action to Google Sheets via persistent queue
+   */
+  async saveToSheets(action: PedagogicalAction): Promise<{ success: boolean; error?: string }> {
+    try {
+      syncQueueService.enqueue('action', action.id, 'upsert', action);
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Enqueue error' };
+    }
+  },
+
+  /**
+   * Update status of an action in Google Sheets via persistent queue
+   */
+  async updateStatusInSheets(
+    actionId: string, 
+    newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA'
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      syncQueueService.enqueue('action_status', actionId, 'update_status', { actionId, newStatus });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error?.message || 'Enqueue error' };
+    }
+  },
+
+  /**
    * Enqueue a single action operation into the persistent queue
    */
   enqueueSync(action: PedagogicalAction): { queued: true; queueItemId: string } {

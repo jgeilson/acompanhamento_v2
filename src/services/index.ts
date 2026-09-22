@@ -6,3 +6,4 @@ export * from './subjectsService';
 export * from './meetingsService';
 export * from './plansService';
 export * from './actionsService';
+export * from './syncQueueService';
