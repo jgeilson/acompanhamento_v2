@@ -43,7 +43,7 @@ import {
   plansService,
   actionsService
 } from './services';
-import { syncQueueService, SyncQueueItem } from './services/syncQueueService';
+import { syncQueueService, SyncQueueItem, SyncEvent } from './services/syncQueueService';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -163,136 +163,145 @@ export default function App() {
   // Calculations
   const pendingActionsCount = actions.filter(a => a.status !== 'SUPERADA').length;
 
-  // Listen to syncQueueService completion events to show a background "Sincronizado na Planilha" toast
-  const prevQueuePendingRef = React.useRef<number>(0);
-
+  // Listen to syncQueueService events to separate queued from synced status
   useEffect(() => {
-    const unsubscribe = syncQueueService.subscribe((items: SyncQueueItem[]) => {
-      const pendingCount = items.filter((i: SyncQueueItem) => i.status === 'pending' || i.status === 'syncing').length;
-      if (prevQueuePendingRef.current > 0 && pendingCount === 0) {
-        showFeedback('Todas as alterações locais foram sincronizadas na Planilha Google com sucesso!', 'success');
+    const unsubscribeEvents = syncQueueService.subscribeEvents((event: SyncEvent) => {
+      if (event.type === 'synced') {
+        const entityNames: Record<string, string> = {
+          teacher: 'Professor(a)',
+          class: 'Turma',
+          subject: 'Disciplina',
+          meeting: 'Reunião',
+          plan: 'Planejamento Bimestral',
+          action: 'Encaminhamento Pedagógico',
+          action_status: 'Status do Encaminhamento'
+        };
+        const label = entityNames[event.item.entityType] || 'Registro';
+        showFeedback(`${label} sincronizado(a) na Planilha Google com sucesso!`, 'success');
+      } else if (event.type === 'error') {
+        showFeedback(`Erro ao sincronizar na Planilha: ${event.error}. O sistema tentará novamente em instantes.`, 'error');
       }
-      prevQueuePendingRef.current = pendingCount;
     });
-    return unsubscribe;
+
+    return unsubscribeEvents;
   }, [showFeedback]);
 
   // Handlers: Meetings
   const handleSaveMeeting = async (newMeeting: BiweeklyMeeting) => {
-    const { nextMeetings, nextActions } = meetingsService.add(meetings, actions, newMeeting);
+    const { nextMeetings, nextActions, sync } = meetingsService.add(meetings, actions, newMeeting);
     setMeetings(nextMeetings);
     setActions(nextActions);
-    showFeedback('Reunião salva no computador (local). Sincronizando com a Planilha Google...', 'info');
+    showFeedback(`Reunião salva no computador (local). Adicionada à fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeleteMeeting = (meetingId: string) => {
-    const nextMeetings = meetingsService.delete(meetings, meetingId);
-    setMeetings(nextMeetings);
-    showFeedback('Reunião excluída no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = meetingsService.delete(meetings, meetingId);
+    setMeetings(data);
+    showFeedback(`Reunião excluída localmente. Exclusão adicionada à fila [ID: ${sync.queueItemId}]`, 'info');
   };
 
   // Handlers: Teachers
   const handleAddTeacher = async (newTeacher: Teacher) => {
-    const next = teachersService.add(teachers, newTeacher);
-    setTeachers(next);
-    showFeedback(`Professor(a) "${newTeacher.name}" salvo(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = teachersService.add(teachers, newTeacher);
+    setTeachers(data);
+    showFeedback(`Professor(a) "${newTeacher.name}" salvo(a) localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdateTeacher = (updatedTeacher: Teacher) => {
-    const next = teachersService.update(teachers, updatedTeacher);
-    setTeachers(next);
-    showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = teachersService.update(teachers, updatedTeacher);
+    setTeachers(data);
+    showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a) localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeleteTeacher = (teacherId: string) => {
     const deleted = teachers.find(t => t.id === teacherId);
-    const next = teachersService.delete(teachers, teacherId);
-    setTeachers(next);
-    showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a) no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = teachersService.delete(teachers, teacherId);
+    setTeachers(data);
+    showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a) localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   // Handlers: Classes
   const handleAddClassGroup = async (newClass: ClassGroup) => {
-    const next = classesService.add(classGroups, newClass);
-    setClassGroups(next);
-    showFeedback(`Turma "${newClass.name}" salva no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = classesService.add(classGroups, newClass);
+    setClassGroups(data);
+    showFeedback(`Turma "${newClass.name}" salva localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdateClassGroup = (updatedClass: ClassGroup) => {
-    const next = classesService.update(classGroups, updatedClass);
-    setClassGroups(next);
-    showFeedback(`Turma "${updatedClass.name}" atualizada no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = classesService.update(classGroups, updatedClass);
+    setClassGroups(data);
+    showFeedback(`Turma "${updatedClass.name}" atualizada localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeleteClassGroup = (classId: string) => {
     const deleted = classGroups.find(c => c.id === classId);
-    const next = classesService.delete(classGroups, classId);
-    setClassGroups(next);
-    showFeedback(`Turma "${deleted?.name || ''}" removida no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = classesService.delete(classGroups, classId);
+    setClassGroups(data);
+    showFeedback(`Turma "${deleted?.name || ''}" removida localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   // Handlers: Subjects
   const handleAddSubject = async (newSubject: Subject) => {
-    const next = subjectsService.add(subjects, newSubject);
-    setSubjects(next);
-    showFeedback(`Disciplina "${newSubject.name}" salva no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = subjectsService.add(subjects, newSubject);
+    setSubjects(data);
+    showFeedback(`Disciplina "${newSubject.name}" salva localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdateSubject = (updatedSubject: Subject) => {
-    const next = subjectsService.update(subjects, updatedSubject);
-    setSubjects(next);
-    showFeedback(`Disciplina "${updatedSubject.name}" atualizada no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = subjectsService.update(subjects, updatedSubject);
+    setSubjects(data);
+    showFeedback(`Disciplina "${updatedSubject.name}" atualizada localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeleteSubject = (subjectId: string) => {
     const deleted = subjects.find(s => s.id === subjectId);
-    const next = subjectsService.delete(subjects, subjectId);
-    setSubjects(next);
-    showFeedback(`Disciplina "${deleted?.name || ''}" removida no computador (local). Sincronizando com a Planilha Google...`, 'info');
+    const { data, sync } = subjectsService.delete(subjects, subjectId);
+    setSubjects(data);
+    showFeedback(`Disciplina "${deleted?.name || ''}" removida localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   // Handlers: Pedagogical Actions
   const handleAddAction = async (newAction: PedagogicalAction) => {
-    const next = actionsService.add(actions, newAction);
-    setActions(next);
-    showFeedback('Encaminhamento salvo no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = actionsService.add(actions, newAction);
+    setActions(data);
+    showFeedback(`Encaminhamento salvo localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdateAction = (updatedAction: PedagogicalAction) => {
-    const next = actionsService.update(actions, updatedAction);
-    setActions(next);
-    showFeedback('Encaminhamento atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = actionsService.update(actions, updatedAction);
+    setActions(data);
+    showFeedback(`Encaminhamento atualizado localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeleteAction = (actionId: string) => {
-    const next = actionsService.delete(actions, actionId);
-    setActions(next);
-    showFeedback('Encaminhamento excluído no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = actionsService.delete(actions, actionId);
+    setActions(data);
+    showFeedback(`Encaminhamento excluído localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdateActionStatus = async (actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA') => {
-    const updatedActions = actionsService.updateStatus(actions, actionId, newStatus);
-    setActions(updatedActions);
-    showFeedback('Status atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = actionsService.updateStatus(actions, actionId, newStatus);
+    setActions(data);
+    showFeedback(`Status atualizado localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   // Handlers: Bimonthly Plans
   const handleAddPlan = async (newPlan: BimonthlyPlan) => {
-    const { nextPlans } = plansService.addOrUpdate(bimonthlyPlans, newPlan);
+    const { nextPlans, sync } = plansService.addOrUpdate(bimonthlyPlans, newPlan);
     setBimonthlyPlans(nextPlans);
-    showFeedback('Planejamento salvo no computador (local). Sincronizando com a Planilha Google...', 'info');
+    showFeedback(`Planejamento salvo localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleUpdatePlan = (updatedPlan: BimonthlyPlan) => {
-    const next = plansService.update(bimonthlyPlans, updatedPlan);
-    setBimonthlyPlans(next);
-    showFeedback('Planejamento atualizado no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = plansService.update(bimonthlyPlans, updatedPlan);
+    setBimonthlyPlans(data);
+    showFeedback(`Planejamento atualizado localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDeletePlan = (planId: string) => {
-    const next = plansService.delete(bimonthlyPlans, planId);
-    setBimonthlyPlans(next);
-    showFeedback('Planejamento removido no computador (local). Sincronizando com a Planilha Google...', 'info');
+    const { data, sync } = plansService.delete(bimonthlyPlans, planId);
+    setBimonthlyPlans(data);
+    showFeedback(`Planejamento removido localmente. Fila de sincronização [ID: ${sync.queueItemId}]`, 'info');
   };
 
   const handleDataLoadedFromSheets = (loaded: {

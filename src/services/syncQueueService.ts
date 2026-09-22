@@ -42,12 +42,20 @@ const QUEUE_STORAGE_KEY = 'sync_queue_v2';
 const LOGS_STORAGE_KEY = 'sync_audit_logs_v2';
 const MAX_LOGS_ENTRIES = 50;
 
+export type SyncEvent = 
+  | { type: 'queued'; item: SyncQueueItem }
+  | { type: 'syncing'; item: SyncQueueItem }
+  | { type: 'synced'; item: SyncQueueItem }
+  | { type: 'error'; item: SyncQueueItem; error: string };
+
 type QueueListener = (items: SyncQueueItem[], logs: SyncAuditLog[]) => void;
+type SyncEventListener = (event: SyncEvent) => void;
 
 class SyncQueueManager {
   private queue: SyncQueueItem[] = [];
   private logs: SyncAuditLog[] = [];
   private listeners: Set<QueueListener> = new Set();
+  private eventListeners: Set<SyncEventListener> = new Set();
   private isProcessing = false;
   private timer: any = null;
 
@@ -123,6 +131,21 @@ class SyncQueueManager {
     return () => this.listeners.delete(listener);
   }
 
+  public subscribeEvents(listener: SyncEventListener): () => void {
+    this.eventListeners.add(listener);
+    return () => this.eventListeners.delete(listener);
+  }
+
+  private emitEvent(event: SyncEvent): void {
+    this.eventListeners.forEach(l => {
+      try {
+        l(event);
+      } catch (err) {
+        console.error('Error in sync event subscriber', err);
+      }
+    });
+  }
+
   private notifyListeners(): void {
     const items = this.getItems();
     const logs = this.getLogs();
@@ -178,13 +201,14 @@ class SyncQueueManager {
     entityId: string,
     operation: 'upsert' | 'update_status' | 'delete',
     payload: any
-  ): string {
+  ): { queued: true; queueItemId: string; status: 'queued' } {
     const now = new Date().toISOString();
     const existingIndex = this.queue.findIndex(
       item => item.entityType === entityType && item.entityId === entityId && item.status !== 'synced'
     );
 
     let queueItemId: string;
+    let itemToEmit: SyncQueueItem;
 
     if (existingIndex >= 0) {
       // Coalesce / update existing pending item to avoid redundant remote requests
@@ -197,6 +221,7 @@ class SyncQueueManager {
       existing.lastError = undefined;
       existing.isPermanentError = false;
       queueItemId = existing.id;
+      itemToEmit = existing;
     } else {
       queueItemId = `sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const newItem: SyncQueueItem = {
@@ -213,12 +238,15 @@ class SyncQueueManager {
         updatedAt: now
       };
       this.queue.push(newItem);
+      itemToEmit = newItem;
     }
 
     this.saveToStorage();
+    this.emitEvent({ type: 'queued', item: itemToEmit });
+    
     // Trigger immediate background sync
     this.processQueue();
-    return queueItemId;
+    return { queued: true, queueItemId, status: 'queued' };
   }
 
   /**
@@ -257,6 +285,7 @@ class SyncQueueManager {
         item.attempts += 1;
         item.lastAttemptAt = new Date().toISOString();
         this.saveToStorage();
+        this.emitEvent({ type: 'syncing', item });
 
         try {
           const result = await this.executeRemoteSync(item);
@@ -265,6 +294,7 @@ class SyncQueueManager {
             item.lastError = undefined;
             item.isPermanentError = false;
             this.addLog(item.entityType, item.entityId, item.operation, 'success', result.operation ? `Operação: ${result.operation}` : undefined);
+            this.emitEvent({ type: 'synced', item });
           } else {
             const isFatal = result.retryable === false;
             item.status = 'error';
@@ -272,12 +302,14 @@ class SyncQueueManager {
             item.isPermanentError = isFatal;
             item.nextAttemptAt = Date.now() + this.calculateBackoffDelay(item.attempts);
             this.addLog(item.entityType, item.entityId, item.operation, 'error', item.lastError);
+            this.emitEvent({ type: 'error', item, error: item.lastError || 'Erro de sincronização' });
           }
         } catch (err: any) {
           item.status = 'error';
           item.lastError = err?.message || 'Falha de conexão com o servidor';
           item.nextAttemptAt = Date.now() + this.calculateBackoffDelay(item.attempts);
           this.addLog(item.entityType, item.entityId, item.operation, 'error', item.lastError);
+          this.emitEvent({ type: 'error', item, error: item.lastError || 'Falha de conexão com o servidor' });
         }
 
         this.saveToStorage();

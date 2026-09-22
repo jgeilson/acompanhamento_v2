@@ -9,45 +9,40 @@ import { syncQueueService } from './syncQueueService';
 
 export const subjectsService = {
   /**
-   * Save/Upsert a subject to Google Sheets via persistent queue
+   * Enqueue a subject operation into the persistent queue
    */
-  async saveToSheets(subject: Subject): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('subject', subject.id, 'upsert', subject);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueSync(subject: Subject): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('subject', subject.id, 'upsert', subject);
   },
 
   /**
-   * Adds a new subject to the list, updates localStorage and sync queue
+   * Adds a new subject to local storage and enqueues sync
    */
-  add(current: Subject[], newSubject: Subject): Subject[] {
+  add(current: Subject[], newSubject: Subject): { data: Subject[]; sync: { queued: true; queueItemId: string } } {
     const next = [...current, newSubject];
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
-    syncQueueService.enqueue('subject', newSubject.id, 'upsert', newSubject);
-    return next;
+    const sync = syncQueueService.enqueue('subject', newSubject.id, 'upsert', newSubject);
+    return { data: next, sync };
   },
 
   /**
-   * Updates an existing subject in the list, updates localStorage and sync queue
+   * Updates an existing subject in local storage and enqueues sync
    */
-  update(current: Subject[], updatedSubject: Subject): Subject[] {
+  update(current: Subject[], updatedSubject: Subject): { data: Subject[]; sync: { queued: true; queueItemId: string } } {
     const next = current.map(s => s.id === updatedSubject.id ? updatedSubject : s);
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
-    syncQueueService.enqueue('subject', updatedSubject.id, 'upsert', updatedSubject);
-    return next;
+    const sync = syncQueueService.enqueue('subject', updatedSubject.id, 'upsert', updatedSubject);
+    return { data: next, sync };
   },
 
   /**
-   * Removes a subject by ID and updates localStorage
+   * Removes a subject by ID from local storage and enqueues sync
    */
-  delete(current: Subject[], subjectId: string): Subject[] {
+  delete(current: Subject[], subjectId: string): { data: Subject[]; sync: { queued: true; queueItemId: string } } {
     const next = current.filter(s => s.id !== subjectId);
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
-    syncQueueService.enqueue('subject', subjectId, 'delete', { id: subjectId });
-    return next;
+    const sync = syncQueueService.enqueue('subject', subjectId, 'delete', { id: subjectId });
+    return { data: next, sync };
   }
 };
 

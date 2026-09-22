@@ -9,21 +9,19 @@ import { syncQueueService } from './syncQueueService';
 
 export const plansService = {
   /**
-   * Save/Upsert a bimonthly plan to Google Sheets via persistent queue
+   * Enqueue a bimonthly plan operation into the persistent queue
    */
-  async saveToSheets(plan: BimonthlyPlan): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('plan', plan.id, 'upsert', plan);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueSync(plan: BimonthlyPlan): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('plan', plan.id, 'upsert', plan);
   },
 
   /**
    * Adds or updates a plan by teacher, subject, bimester, and class group overlap.
    */
-  addOrUpdate(currentPlans: BimonthlyPlan[], newPlan: BimonthlyPlan): { nextPlans: BimonthlyPlan[]; isNew: boolean } {
+  addOrUpdate(
+    currentPlans: BimonthlyPlan[], 
+    newPlan: BimonthlyPlan
+  ): { nextPlans: BimonthlyPlan[]; isNew: boolean; sync: { queued: true; queueItemId: string } } {
     const newClasses = (newPlan.classGroupIds && newPlan.classGroupIds.length > 0) ? newPlan.classGroupIds : [newPlan.classGroupId];
     const existsIndex = currentPlans.findIndex(p => {
       if (p.teacherId !== newPlan.teacherId || p.subjectId !== newPlan.subjectId || Number(p.bimester) !== Number(newPlan.bimester)) {
@@ -43,28 +41,28 @@ export const plansService = {
     }
 
     saveLocalData(STORAGE_KEYS.PLANS, nextPlans);
-    syncQueueService.enqueue('plan', newPlan.id, 'upsert', newPlan);
-    return { nextPlans, isNew };
+    const sync = syncQueueService.enqueue('plan', newPlan.id, 'upsert', newPlan);
+    return { nextPlans, isNew, sync };
   },
 
   /**
-   * Updates an existing plan in the list, updates localStorage and sync queue
+   * Updates an existing plan in local storage and enqueues sync
    */
-  update(currentPlans: BimonthlyPlan[], updatedPlan: BimonthlyPlan): BimonthlyPlan[] {
+  update(currentPlans: BimonthlyPlan[], updatedPlan: BimonthlyPlan): { data: BimonthlyPlan[]; sync: { queued: true; queueItemId: string } } {
     const next = currentPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p);
     saveLocalData(STORAGE_KEYS.PLANS, next);
-    syncQueueService.enqueue('plan', updatedPlan.id, 'upsert', updatedPlan);
-    return next;
+    const sync = syncQueueService.enqueue('plan', updatedPlan.id, 'upsert', updatedPlan);
+    return { data: next, sync };
   },
 
   /**
-   * Removes a plan by ID and updates localStorage
+   * Removes a plan by ID from local storage and enqueues sync
    */
-  delete(currentPlans: BimonthlyPlan[], planId: string): BimonthlyPlan[] {
+  delete(currentPlans: BimonthlyPlan[], planId: string): { data: BimonthlyPlan[]; sync: { queued: true; queueItemId: string } } {
     const next = currentPlans.filter(p => p.id !== planId);
     saveLocalData(STORAGE_KEYS.PLANS, next);
-    syncQueueService.enqueue('plan', planId, 'delete', { id: planId });
-    return next;
+    const sync = syncQueueService.enqueue('plan', planId, 'delete', { id: planId });
+    return { data: next, sync };
   }
 };
 

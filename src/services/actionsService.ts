@@ -9,74 +9,61 @@ import { syncQueueService } from './syncQueueService';
 
 export const actionsService = {
   /**
-   * Save/Upsert a single action to Google Sheets via persistent queue
+   * Enqueue a single action operation into the persistent queue
    */
-  async saveToSheets(action: PedagogicalAction): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('action', action.id, 'upsert', action);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueSync(action: PedagogicalAction): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('action', action.id, 'upsert', action);
   },
 
   /**
-   * Update status of an action in Google Sheets via persistent queue
+   * Enqueue a status update for an action into the persistent queue
    */
-  async updateStatusInSheets(
-    actionId: string, 
-    newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA'
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('action_status', actionId, 'update_status', { actionId, newStatus });
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueStatusSync(actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA'): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('action_status', actionId, 'update_status', { actionId, newStatus });
   },
 
   /**
-   * Adds a new action to the list, updates localStorage and sync queue
+   * Adds a new action to local storage and enqueues sync
    */
-  add(current: PedagogicalAction[], newAction: PedagogicalAction): PedagogicalAction[] {
+  add(current: PedagogicalAction[], newAction: PedagogicalAction): { data: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const next = [...current, newAction];
     saveLocalData(STORAGE_KEYS.ACTIONS, next);
-    syncQueueService.enqueue('action', newAction.id, 'upsert', newAction);
-    return next;
+    const sync = syncQueueService.enqueue('action', newAction.id, 'upsert', newAction);
+    return { data: next, sync };
   },
 
   /**
-   * Updates an existing action in the list, updates localStorage and sync queue
+   * Updates an existing action in local storage and enqueues sync
    */
-  update(current: PedagogicalAction[], updatedAction: PedagogicalAction): PedagogicalAction[] {
+  update(current: PedagogicalAction[], updatedAction: PedagogicalAction): { data: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const next = current.map(a => a.id === updatedAction.id ? updatedAction : a);
     saveLocalData(STORAGE_KEYS.ACTIONS, next);
-    syncQueueService.enqueue('action', updatedAction.id, 'upsert', updatedAction);
-    return next;
+    const sync = syncQueueService.enqueue('action', updatedAction.id, 'upsert', updatedAction);
+    return { data: next, sync };
   },
 
   /**
-   * Updates status of an action in local list, localStorage and sync queue
+   * Updates status of an action in local storage and enqueues sync
    */
   updateStatus(
     current: PedagogicalAction[], 
     actionId: string, 
     newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA'
-  ): PedagogicalAction[] {
+  ): { data: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const next = current.map(a => a.id === actionId ? { ...a, status: newStatus } : a);
     saveLocalData(STORAGE_KEYS.ACTIONS, next);
-    syncQueueService.enqueue('action_status', actionId, 'update_status', { actionId, newStatus });
-    return next;
+    const sync = syncQueueService.enqueue('action_status', actionId, 'update_status', { actionId, newStatus });
+    return { data: next, sync };
   },
 
   /**
-   * Removes an action by ID and updates localStorage
+   * Removes an action by ID from local storage and enqueues sync
    */
-  delete(current: PedagogicalAction[], actionId: string): PedagogicalAction[] {
+  delete(current: PedagogicalAction[], actionId: string): { data: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const next = current.filter(a => a.id !== actionId);
     saveLocalData(STORAGE_KEYS.ACTIONS, next);
-    syncQueueService.enqueue('action', actionId, 'delete', { id: actionId });
-    return next;
+    const sync = syncQueueService.enqueue('action', actionId, 'delete', { id: actionId });
+    return { data: next, sync };
   }
 };
 

@@ -9,45 +9,40 @@ import { syncQueueService } from './syncQueueService';
 
 export const teachersService = {
   /**
-   * Save/Upsert a teacher to Google Sheets via persistent queue
+   * Enqueue a teacher operation into the persistent queue
    */
-  async saveToSheets(teacher: Teacher): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('teacher', teacher.id, 'upsert', teacher);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueSync(teacher: Teacher): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('teacher', teacher.id, 'upsert', teacher);
   },
 
   /**
-   * Adds a new teacher to the list, updates localStorage and sync queue
+   * Adds a new teacher to local storage and enqueues sync
    */
-  add(current: Teacher[], newTeacher: Teacher): Teacher[] {
+  add(current: Teacher[], newTeacher: Teacher): { data: Teacher[]; sync: { queued: true; queueItemId: string } } {
     const next = [...current, newTeacher];
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
-    syncQueueService.enqueue('teacher', newTeacher.id, 'upsert', newTeacher);
-    return next;
+    const sync = syncQueueService.enqueue('teacher', newTeacher.id, 'upsert', newTeacher);
+    return { data: next, sync };
   },
 
   /**
-   * Updates an existing teacher in the list, updates localStorage and sync queue
+   * Updates an existing teacher in local storage and enqueues sync
    */
-  update(current: Teacher[], updatedTeacher: Teacher): Teacher[] {
+  update(current: Teacher[], updatedTeacher: Teacher): { data: Teacher[]; sync: { queued: true; queueItemId: string } } {
     const next = current.map(t => t.id === updatedTeacher.id ? updatedTeacher : t);
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
-    syncQueueService.enqueue('teacher', updatedTeacher.id, 'upsert', updatedTeacher);
-    return next;
+    const sync = syncQueueService.enqueue('teacher', updatedTeacher.id, 'upsert', updatedTeacher);
+    return { data: next, sync };
   },
 
   /**
-   * Removes a teacher by ID and updates localStorage
+   * Removes a teacher by ID from local storage and enqueues sync
    */
-  delete(current: Teacher[], teacherId: string): Teacher[] {
+  delete(current: Teacher[], teacherId: string): { data: Teacher[]; sync: { queued: true; queueItemId: string } } {
     const next = current.filter(t => t.id !== teacherId);
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
-    syncQueueService.enqueue('teacher', teacherId, 'delete', { id: teacherId });
-    return next;
+    const sync = syncQueueService.enqueue('teacher', teacherId, 'delete', { id: teacherId });
+    return { data: next, sync };
   }
 };
 

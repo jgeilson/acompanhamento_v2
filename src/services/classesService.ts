@@ -9,45 +9,40 @@ import { syncQueueService } from './syncQueueService';
 
 export const classesService = {
   /**
-   * Save/Upsert a class group to Google Sheets via persistent queue
+   * Enqueue a class group operation into the persistent queue
    */
-  async saveToSheets(classGroup: ClassGroup): Promise<{ success: boolean; error?: string }> {
-    try {
-      syncQueueService.enqueue('class', classGroup.id, 'upsert', classGroup);
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error?.message || 'Enqueue error' };
-    }
+  enqueueSync(classGroup: ClassGroup): { queued: true; queueItemId: string } {
+    return syncQueueService.enqueue('class', classGroup.id, 'upsert', classGroup);
   },
 
   /**
-   * Adds a new class to the list, updates localStorage and sync queue
+   * Adds a new class to local storage and enqueues sync
    */
-  add(current: ClassGroup[], newClass: ClassGroup): ClassGroup[] {
+  add(current: ClassGroup[], newClass: ClassGroup): { data: ClassGroup[]; sync: { queued: true; queueItemId: string } } {
     const next = [...current, newClass];
     saveLocalData(STORAGE_KEYS.CLASSES, next);
-    syncQueueService.enqueue('class', newClass.id, 'upsert', newClass);
-    return next;
+    const sync = syncQueueService.enqueue('class', newClass.id, 'upsert', newClass);
+    return { data: next, sync };
   },
 
   /**
-   * Updates an existing class in the list, updates localStorage and sync queue
+   * Updates an existing class in local storage and enqueues sync
    */
-  update(current: ClassGroup[], updatedClass: ClassGroup): ClassGroup[] {
+  update(current: ClassGroup[], updatedClass: ClassGroup): { data: ClassGroup[]; sync: { queued: true; queueItemId: string } } {
     const next = current.map(c => c.id === updatedClass.id ? updatedClass : c);
     saveLocalData(STORAGE_KEYS.CLASSES, next);
-    syncQueueService.enqueue('class', updatedClass.id, 'upsert', updatedClass);
-    return next;
+    const sync = syncQueueService.enqueue('class', updatedClass.id, 'upsert', updatedClass);
+    return { data: next, sync };
   },
 
   /**
-   * Removes a class by ID and updates localStorage
+   * Removes a class by ID from local storage and enqueues sync
    */
-  delete(current: ClassGroup[], classId: string): ClassGroup[] {
+  delete(current: ClassGroup[], classId: string): { data: ClassGroup[]; sync: { queued: true; queueItemId: string } } {
     const next = current.filter(c => c.id !== classId);
     saveLocalData(STORAGE_KEYS.CLASSES, next);
-    syncQueueService.enqueue('class', classId, 'delete', { id: classId });
-    return next;
+    const sync = syncQueueService.enqueue('class', classId, 'delete', { id: classId });
+    return { data: next, sync };
   }
 };
 
