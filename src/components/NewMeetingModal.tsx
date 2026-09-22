@@ -83,7 +83,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
     const filtered = subjects.filter(s => {
       if (selectedTeacher.subjects && selectedTeacher.subjects.length > 0) {
         const match = selectedTeacher.subjects.some(
-          ref => ref === s.id || ref.toLowerCase() === s.name.toLowerCase() || ref.toLowerCase() === s.code.toLowerCase()
+          ref => ref === s.id || ref.toLowerCase() === s.name.toLowerCase() || (s.code && ref.toLowerCase() === s.code.toLowerCase())
         );
         if (match) return true;
       }

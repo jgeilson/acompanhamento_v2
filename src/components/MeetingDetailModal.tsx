@@ -8,7 +8,8 @@ import {
   Clock, 
   BookOpen, 
   CheckSquare, 
-  FileText 
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { 
   BiweeklyMeeting, 
@@ -20,11 +21,13 @@ import cabecalhoImg from '../data/cabecalho.png';
 interface MeetingDetailModalProps {
   meeting: BiweeklyMeeting | null;
   onClose: () => void;
+  onDeleteMeeting?: (meetingId: string) => void;
 }
 
 export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
   meeting,
-  onClose
+  onClose,
+  onDeleteMeeting
 }) => {
   if (!meeting) return null;
 
@@ -59,6 +62,22 @@ export const MeetingDetailModal: React.FC<MeetingDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {onDeleteMeeting && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Deseja realmente excluir a reunião de ${meeting.teacherName} (${meeting.meetingDate})?`)) {
+                    onDeleteMeeting(meeting.id);
+                    onClose();
+                  }
+                }}
+                className="bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+                title="Excluir Reunião"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Excluir</span>
+              </button>
+            )}
+
             <button
               onClick={handlePrint}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5"

@@ -11,7 +11,9 @@ import {
   AlertCircle,
   Users,
   BookOpen,
-  History
+  History,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   BiweeklyMeeting, 
@@ -31,6 +33,7 @@ interface MeetingsViewProps {
   classGroups: ClassGroup[];
   onOpenNewMeeting: () => void;
   onSelectMeetingDetail: (meeting: BiweeklyMeeting) => void;
+  onDeleteMeeting?: (meetingId: string) => void;
 }
 
 export const MeetingsView: React.FC<MeetingsViewProps> = ({
@@ -39,10 +42,12 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
   subjects,
   classGroups,
   onOpenNewMeeting,
-  onSelectMeetingDetail
+  onSelectMeetingDetail,
+  onDeleteMeeting
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [meetingToDelete, setMeetingToDelete] = useState<BiweeklyMeeting | null>(null);
   const [selectedTeacherFilter, setSelectedTeacherFilter] = useState<string>('');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('');
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('');
@@ -282,13 +287,27 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
                     {meeting.newActions.length} encaminhamento(s)
                   </span>
 
-                  <button
-                    onClick={() => onSelectMeetingDetail(meeting)}
-                    className="font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                  >
-                    <span>Ver Registro Completo</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {onDeleteMeeting && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMeetingToDelete(meeting);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Excluir Reunião"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onSelectMeetingDetail(meeting)}
+                      className="font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    >
+                      <span>Ver Registro Completo</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -304,6 +323,46 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         </div>
       )}
         </>
+      )}
+
+      {/* Delete Meeting Confirmation Modal */}
+      {meetingToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="p-2.5 rounded-full bg-red-100">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Excluir Reunião</h3>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Deseja realmente excluir a reunião de <strong>{meetingToDelete.teacherName}</strong> ({meetingToDelete.subjectName} - {meetingToDelete.classGroupName}) realizada em {meetingToDelete.meetingDate}?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMeetingToDelete(null)}
+                className="px-4 py-2 border border-slate-300 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-50 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteMeeting && meetingToDelete) {
+                    onDeleteMeeting(meetingToDelete.id);
+                  }
+                  setMeetingToDelete(null);
+                }}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs transition-all shadow"
+              >
+                Excluir Reunião
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

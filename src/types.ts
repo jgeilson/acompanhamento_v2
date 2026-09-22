@@ -10,8 +10,8 @@ export interface Teacher {
 export interface Subject {
   id: string;
   name: string;
-  code: string;
-  color: string;
+  code?: string;
+  color?: string;
   totalWorkloadHours: number;
 }
 
@@ -204,7 +204,7 @@ export interface BiweeklyMeeting {
   newActions: PedagogicalAction[];
 }
 
-export type ActiveTab = 'dashboard' | 'meetings' | 'planning' | 'timeline' | 'actions';
+export type ActiveTab = 'dashboard' | 'meetings' | 'planning' | 'timeline' | 'actions' | 'cadastros';
 
 export interface AppSettings {
   coordinatorName: string;

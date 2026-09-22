@@ -748,8 +748,10 @@ export async function readAllFromSheets(config?: GoogleSheetsConfig) {
   // Parse Subjects
   const subjects = rawSubjects.map((row: any[], index: number) => {
     const name = clean(row[1]);
-    const id = clean(row[0]) || (name ? `disc-${slugify(name)}` : `disc-${index + 1}`);
-    const code = clean(row[2]) || id.toUpperCase();
+    const rawId = clean(row[0]);
+    const rawCode = clean(row[2]);
+    const id = rawId || rawCode || (name ? slugify(name).toUpperCase() : `DISC-${index + 1}`);
+    const code = rawCode || id;
     const color = clean(row[3]) || '#2563eb';
     const totalWorkloadHours = parseInt(clean(row[4]) || '80', 10) || 80;
 

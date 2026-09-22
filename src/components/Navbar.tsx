@@ -10,7 +10,8 @@ import {
   Sparkles,
   FileText,
   Clock,
-  RefreshCw
+  RefreshCw,
+  FolderOpen
 } from 'lucide-react';
 import { ActiveTab, AppSettings } from '../types';
 
@@ -117,6 +118,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BookOpenCheck className="w-4 h-4" />
             <span>Planejamento Bimestral</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('cadastros')}
+            className={`flex items-center gap-2 px-3 py-2.5 font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === 'cadastros'
+                ? 'border-indigo-500 text-indigo-400 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+            }`}
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span>Cadastros</span>
           </button>
 
         </nav>

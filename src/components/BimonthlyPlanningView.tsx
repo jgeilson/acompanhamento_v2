@@ -44,7 +44,7 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
     const filtered = subjects.filter(s => {
       if (activeTeacher.subjects && activeTeacher.subjects.length > 0) {
         const match = activeTeacher.subjects.some(
-          ref => ref === s.id || ref.toLowerCase() === s.name.toLowerCase() || ref.toLowerCase() === s.code.toLowerCase()
+          ref => ref === s.id || ref.toLowerCase() === s.name.toLowerCase() || (s.code && ref.toLowerCase() === s.code.toLowerCase())
         );
         if (match) return true;
       }

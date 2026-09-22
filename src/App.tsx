@@ -7,6 +7,7 @@ import { PedagogicalTimelineView } from './components/PedagogicalTimelineView';
 import { PedagogicalActionsView } from './components/PedagogicalActionsView';
 import { NewMeetingModal } from './components/NewMeetingModal';
 import { MeetingDetailModal } from './components/MeetingDetailModal';
+import { CadastrosView } from './components/CadastrosView';
 
 import { 
   ActiveTab, 
@@ -28,17 +29,28 @@ import {
   INITIAL_PEDAGOGICAL_ACTIONS 
 } from './data/initialData';
 
+function loadLocalData<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? (parsed as unknown as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
-  // Master State
-  const [teachers, setTeachers] = useState<Teacher[]>(INITIAL_TEACHERS);
-  const [subjects, setSubjects] = useState<Subject[]>(INITIAL_SUBJECTS);
-  const [classGroups, setClassGroups] = useState<ClassGroup[]>(INITIAL_CLASS_GROUPS);
-  const [bimonthlyPlans, setBimonthlyPlans] = useState<BimonthlyPlan[]>(INITIAL_BIMONTHLY_PLANS);
+  // Master State (with localStorage cache for offline/direct CRUD persistence)
+  const [teachers, setTeachers] = useState<Teacher[]>(() => loadLocalData('local_teachers', INITIAL_TEACHERS));
+  const [subjects, setSubjects] = useState<Subject[]>(() => loadLocalData('local_subjects', INITIAL_SUBJECTS));
+  const [classGroups, setClassGroups] = useState<ClassGroup[]>(() => loadLocalData('local_classes', INITIAL_CLASS_GROUPS));
+  const [bimonthlyPlans, setBimonthlyPlans] = useState<BimonthlyPlan[]>(() => loadLocalData('local_plans', INITIAL_BIMONTHLY_PLANS));
   
-  const [meetings, setMeetings] = useState<BiweeklyMeeting[]>(INITIAL_BIWEEKLY_MEETINGS);
-  const [actions, setActions] = useState<PedagogicalAction[]>(INITIAL_PEDAGOGICAL_ACTIONS);
+  const [meetings, setMeetings] = useState<BiweeklyMeeting[]>(() => loadLocalData('local_meetings', INITIAL_BIWEEKLY_MEETINGS));
+  const [actions, setActions] = useState<PedagogicalAction[]>(() => loadLocalData('local_actions', INITIAL_PEDAGOGICAL_ACTIONS));
 
   // App Settings from Sheet (Aba Configurações)
   const [appSettings, setAppSettings] = useState<AppSettings>(() => ({
@@ -97,6 +109,14 @@ export default function App() {
         setBimonthlyPlans(loadedPlans);
         setMeetings(loadedMeetings);
         setActions(loadedActions);
+
+        // Update local cache
+        localStorage.setItem('local_teachers', JSON.stringify(loadedTeachers));
+        localStorage.setItem('local_classes', JSON.stringify(loadedClasses));
+        localStorage.setItem('local_subjects', JSON.stringify(loadedSubjects));
+        localStorage.setItem('local_plans', JSON.stringify(loadedPlans));
+        localStorage.setItem('local_meetings', JSON.stringify(loadedMeetings));
+        localStorage.setItem('local_actions', JSON.stringify(loadedActions));
 
         if (data.settings) {
           const loadedSettings: AppSettings = {
@@ -191,6 +211,8 @@ export default function App() {
 
     setMeetings(updatedMeetings);
     setActions(updatedActions);
+    localStorage.setItem('local_meetings', JSON.stringify(updatedMeetings));
+    localStorage.setItem('local_actions', JSON.stringify(updatedActions));
 
     const config = getSheetsConfig();
 
@@ -213,9 +235,121 @@ export default function App() {
     autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, updatedMeetings, updatedActions);
   };
 
+  const handleDeleteMeeting = (meetingId: string) => {
+    const nextMeetings = meetings.filter(m => m.id !== meetingId);
+    setMeetings(nextMeetings);
+    localStorage.setItem('local_meetings', JSON.stringify(nextMeetings));
+    showFeedback('Reunião excluída com sucesso.');
+    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, nextMeetings, actions);
+  };
+
+  // CRUD Handlers: Teachers
+  const handleAddTeacher = (newTeacher: Teacher) => {
+    const next = [...teachers, newTeacher];
+    setTeachers(next);
+    localStorage.setItem('local_teachers', JSON.stringify(next));
+    showFeedback(`Professor(a) "${newTeacher.name}" cadastrado(a) com sucesso!`);
+    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleUpdateTeacher = (updatedTeacher: Teacher) => {
+    const next = teachers.map(t => t.id === updatedTeacher.id ? updatedTeacher : t);
+    setTeachers(next);
+    localStorage.setItem('local_teachers', JSON.stringify(next));
+    showFeedback(`Professor(a) "${updatedTeacher.name}" atualizado(a)!`);
+    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleDeleteTeacher = (teacherId: string) => {
+    const deleted = teachers.find(t => t.id === teacherId);
+    const next = teachers.filter(t => t.id !== teacherId);
+    setTeachers(next);
+    localStorage.setItem('local_teachers', JSON.stringify(next));
+    showFeedback(`Professor(a) "${deleted?.name || ''}" removido(a).`);
+    autoSyncToSheets(next, subjects, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  // CRUD Handlers: Classes
+  const handleAddClassGroup = (newClass: ClassGroup) => {
+    const next = [...classGroups, newClass];
+    setClassGroups(next);
+    localStorage.setItem('local_classes', JSON.stringify(next));
+    showFeedback(`Turma "${newClass.name}" cadastrada com sucesso!`);
+    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleUpdateClassGroup = (updatedClass: ClassGroup) => {
+    const next = classGroups.map(c => c.id === updatedClass.id ? updatedClass : c);
+    setClassGroups(next);
+    localStorage.setItem('local_classes', JSON.stringify(next));
+    showFeedback(`Turma "${updatedClass.name}" atualizada!`);
+    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleDeleteClassGroup = (classId: string) => {
+    const deleted = classGroups.find(c => c.id === classId);
+    const next = classGroups.filter(c => c.id !== classId);
+    setClassGroups(next);
+    localStorage.setItem('local_classes', JSON.stringify(next));
+    showFeedback(`Turma "${deleted?.name || ''}" removida.`);
+    autoSyncToSheets(teachers, subjects, next, bimonthlyPlans, meetings, actions);
+  };
+
+  // CRUD Handlers: Subjects
+  const handleAddSubject = (newSubject: Subject) => {
+    const next = [...subjects, newSubject];
+    setSubjects(next);
+    localStorage.setItem('local_subjects', JSON.stringify(next));
+    showFeedback(`Disciplina "${newSubject.name}" cadastrada com sucesso!`);
+    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleUpdateSubject = (updatedSubject: Subject) => {
+    const next = subjects.map(s => s.id === updatedSubject.id ? updatedSubject : s);
+    setSubjects(next);
+    localStorage.setItem('local_subjects', JSON.stringify(next));
+    showFeedback(`Disciplina "${updatedSubject.name}" atualizada!`);
+    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  const handleDeleteSubject = (subjectId: string) => {
+    const deleted = subjects.find(s => s.id === subjectId);
+    const next = subjects.filter(s => s.id !== subjectId);
+    setSubjects(next);
+    localStorage.setItem('local_subjects', JSON.stringify(next));
+    showFeedback(`Disciplina "${deleted?.name || ''}" removida.`);
+    autoSyncToSheets(teachers, next, classGroups, bimonthlyPlans, meetings, actions);
+  };
+
+  // CRUD Handlers: Pedagogical Actions
+  const handleAddAction = (newAction: PedagogicalAction) => {
+    const next = [newAction, ...actions];
+    setActions(next);
+    localStorage.setItem('local_actions', JSON.stringify(next));
+    showFeedback('Encaminhamento cadastrado com sucesso!');
+    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+  };
+
+  const handleUpdateAction = (updatedAction: PedagogicalAction) => {
+    const next = actions.map(a => a.id === updatedAction.id ? updatedAction : a);
+    setActions(next);
+    localStorage.setItem('local_actions', JSON.stringify(next));
+    showFeedback('Encaminhamento atualizado com sucesso!');
+    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+  };
+
+  const handleDeleteAction = (actionId: string) => {
+    const next = actions.filter(a => a.id !== actionId);
+    setActions(next);
+    localStorage.setItem('local_actions', JSON.stringify(next));
+    showFeedback('Encaminhamento excluído.');
+    autoSyncToSheets(teachers, subjects, classGroups, bimonthlyPlans, meetings, next);
+  };
+
   const handleUpdateActionStatus = async (actionId: string, newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA') => {
     const updatedActions = actions.map(a => a.id === actionId ? { ...a, status: newStatus } : a);
     setActions(updatedActions);
+    localStorage.setItem('local_actions', JSON.stringify(updatedActions));
 
     const config = getSheetsConfig();
 
@@ -321,6 +455,7 @@ export default function App() {
               setIsNewMeetingModalOpen(true);
             }}
             onSelectMeetingDetail={setSelectedDetailMeeting}
+            onDeleteMeeting={handleDeleteMeeting}
           />
         )}
 
@@ -331,6 +466,9 @@ export default function App() {
             subjects={subjects}
             classGroups={classGroups}
             onUpdateActionStatus={handleUpdateActionStatus}
+            onAddAction={handleAddAction}
+            onUpdateAction={handleUpdateAction}
+            onDeleteAction={handleDeleteAction}
           />
         )}
 
@@ -340,6 +478,25 @@ export default function App() {
             teachers={teachers}
             subjects={subjects}
             classGroups={classGroups}
+          />
+        )}
+
+        {activeTab === 'cadastros' && (
+          <CadastrosView
+            teachers={teachers}
+            subjects={subjects}
+            classGroups={classGroups}
+            bimonthlyPlans={bimonthlyPlans}
+            meetings={meetings}
+            onAddTeacher={handleAddTeacher}
+            onUpdateTeacher={handleUpdateTeacher}
+            onDeleteTeacher={handleDeleteTeacher}
+            onAddClassGroup={handleAddClassGroup}
+            onUpdateClassGroup={handleUpdateClassGroup}
+            onDeleteClassGroup={handleDeleteClassGroup}
+            onAddSubject={handleAddSubject}
+            onUpdateSubject={handleUpdateSubject}
+            onDeleteSubject={handleDeleteSubject}
           />
         )}
 
@@ -367,6 +524,7 @@ export default function App() {
         <MeetingDetailModal
           meeting={selectedDetailMeeting}
           onClose={() => setSelectedDetailMeeting(null)}
+          onDeleteMeeting={handleDeleteMeeting}
         />
       )}
 
