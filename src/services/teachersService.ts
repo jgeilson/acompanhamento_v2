@@ -5,39 +5,38 @@
 
 import { Teacher } from '../types';
 import { STORAGE_KEYS, saveLocalData } from './storageService';
+import { syncQueueService } from './syncQueueService';
 
 export const teachersService = {
   /**
-   * Save a new teacher to Google Sheets
+   * Save/Upsert a teacher to Google Sheets via persistent queue
    */
   async saveToSheets(teacher: Teacher): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch('/api/sheets/save-teacher', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher })
-      });
-      return await res.json();
+      syncQueueService.enqueue('teacher', teacher.id, 'upsert', teacher);
+      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Network error' };
+      return { success: false, error: error?.message || 'Enqueue error' };
     }
   },
 
   /**
-   * Adds a new teacher to the list and updates localStorage
+   * Adds a new teacher to the list, updates localStorage and sync queue
    */
   add(current: Teacher[], newTeacher: Teacher): Teacher[] {
     const next = [...current, newTeacher];
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
+    syncQueueService.enqueue('teacher', newTeacher.id, 'upsert', newTeacher);
     return next;
   },
 
   /**
-   * Updates an existing teacher in the list and updates localStorage
+   * Updates an existing teacher in the list, updates localStorage and sync queue
    */
   update(current: Teacher[], updatedTeacher: Teacher): Teacher[] {
     const next = current.map(t => t.id === updatedTeacher.id ? updatedTeacher : t);
     saveLocalData(STORAGE_KEYS.TEACHERS, next);
+    syncQueueService.enqueue('teacher', updatedTeacher.id, 'upsert', updatedTeacher);
     return next;
   },
 
@@ -50,3 +49,4 @@ export const teachersService = {
     return next;
   }
 };
+

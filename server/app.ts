@@ -199,127 +199,148 @@ apiRouter.post('/sheets/sync-all', async (req, res) => {
 });
 
 apiRouter.post('/sheets/save-meeting', async (req, res) => {
-  try {
-    const { meeting, config } = req.body || {};
-    if (!meeting) {
-      return res.status(400).json({ error: 'Reunião não fornecida.' });
-    }
+  const { meeting, config } = req.body || {};
+  if (!meeting || !meeting.id) {
+    return res.status(400).json({ success: false, error: 'Reunião ou ID da reunião não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendMeetingToSheet(meeting, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar reunião na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: meeting.id,
       error: error.message || 'Falha ao registrar reunião na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/save-plan', async (req, res) => {
-  try {
-    const { plan, config } = req.body || {};
-    if (!plan) {
-      return res.status(400).json({ error: 'Planejamento não fornecido.' });
-    }
+  const { plan, config } = req.body || {};
+  if (!plan || !plan.id) {
+    return res.status(400).json({ success: false, error: 'Planejamento ou ID do planejamento não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendPlanToSheet(plan, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar planejamento na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: plan.id,
       error: error.message || 'Falha ao registrar planejamento na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/save-teacher', async (req, res) => {
-  try {
-    const { teacher, config } = req.body || {};
-    if (!teacher) {
-      return res.status(400).json({ error: 'Professor não fornecido.' });
-    }
+  const { teacher, config } = req.body || {};
+  if (!teacher || !teacher.id) {
+    return res.status(400).json({ success: false, error: 'Professor ou ID do professor não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendTeacherToSheet(teacher, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar professor na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: teacher.id,
       error: error.message || 'Falha ao registrar professor na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/save-class', async (req, res) => {
-  try {
-    const { classGroup, config } = req.body || {};
-    if (!classGroup) {
-      return res.status(400).json({ error: 'Turma não fornecida.' });
-    }
+  const { classGroup, config } = req.body || {};
+  if (!classGroup || !classGroup.id) {
+    return res.status(400).json({ success: false, error: 'Turma ou ID da turma não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendClassToSheet(classGroup, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar turma na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: classGroup.id,
       error: error.message || 'Falha ao registrar turma na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/save-subject', async (req, res) => {
-  try {
-    const { subject, config } = req.body || {};
-    if (!subject) {
-      return res.status(400).json({ error: 'Disciplina não fornecida.' });
-    }
+  const { subject, config } = req.body || {};
+  if (!subject || !subject.id) {
+    return res.status(400).json({ success: false, error: 'Disciplina ou ID da disciplina não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendSubjectToSheet(subject, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar disciplina na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: subject.id,
       error: error.message || 'Falha ao registrar disciplina na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/save-action', async (req, res) => {
-  try {
-    const { action, config } = req.body || {};
-    if (!action) {
-      return res.status(400).json({ error: 'Encaminhamento não fornecido.' });
-    }
+  const { action, config } = req.body || {};
+  if (!action || !action.id) {
+    return res.status(400).json({ success: false, error: 'Encaminhamento ou ID do encaminhamento não fornecido.', retryable: false });
+  }
 
+  try {
     const result = await appendActionToSheet(action, config);
     return res.json({ ...result });
   } catch (error: any) {
     console.error('Erro ao salvar encaminhamento na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: action.id,
       error: error.message || 'Falha ao registrar encaminhamento na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });
 
 apiRouter.post('/sheets/update-action-status', async (req, res) => {
-  try {
-    const { actionId, newStatus, config } = req.body || {};
-    if (!actionId || !newStatus) {
-      return res.status(400).json({ error: 'Parâmetros incompletos.' });
-    }
+  const { actionId, newStatus, config } = req.body || {};
+  if (!actionId || !newStatus) {
+    return res.status(400).json({ success: false, error: 'Parâmetros incompletos.', retryable: false });
+  }
 
+  try {
     const result = await updateActionStatusInSheet(actionId, newStatus, config);
     return res.json(result);
   } catch (error: any) {
     console.error('Erro ao atualizar status na Planilha Google:', error);
+    const isPermanent = error?.message?.includes('invalid_grant') || error?.message?.includes('insufficient_permissions');
     return res.status(500).json({
       success: false,
+      id: actionId,
       error: error.message || 'Falha ao atualizar encaminhamento na Planilha Google.',
+      retryable: !isPermanent
     });
   }
 });

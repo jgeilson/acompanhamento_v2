@@ -525,9 +525,188 @@ export async function syncAllToSheets(data: {
 }
 
 /**
- * Appends a single meeting and its actions to Google Sheets
+ * Helper to find 1-based row index in a given sheet tab by ID in column A
  */
-export async function appendMeetingToSheet(meeting: any, config?: GoogleSheetsConfig) {
+async function findRowIndexById(sheets: any, spreadsheetId: string, tab: string, id: string): Promise<number> {
+  if (!id) return -1;
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `${tab}!A2:A`
+  }).catch(() => ({ data: { values: [] } }));
+
+  const rows = res.data.values || [];
+  const idx = rows.findIndex((r: any[]) => r && String(r[0]).trim() === String(id).trim());
+  return idx !== -1 ? idx + 2 : -1;
+}
+
+/**
+ * Idempotent Upsert for Teacher (Professores tab)
+ */
+export async function upsertTeacherInSheet(teacher: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    teacher.id,
+    teacher.name,
+    teacher.email || '',
+    teacher.avatarUrl || '',
+    (teacher.subjects || []).join(', '),
+    (teacher.classes || []).join(', ')
+  ];
+
+  const now = new Date().toISOString();
+  const existingRow = await findRowIndexById(sheets, spreadsheetId, 'Professores', teacher.id);
+
+  if (existingRow > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Professores!A${existingRow}:F${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: teacher.id, operation: 'updated', syncedAt: now };
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Professores!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: teacher.id, operation: 'created', syncedAt: now };
+  }
+}
+export const appendTeacherToSheet = upsertTeacherInSheet;
+
+/**
+ * Idempotent Upsert for Class Group (Turmas tab)
+ */
+export async function upsertClassInSheet(classGroup: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    classGroup.id,
+    classGroup.name,
+    classGroup.shift || 'MANHA',
+    classGroup.totalStudents || 0
+  ];
+
+  const now = new Date().toISOString();
+  const existingRow = await findRowIndexById(sheets, spreadsheetId, 'Turmas', classGroup.id);
+
+  if (existingRow > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Turmas!A${existingRow}:D${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: classGroup.id, operation: 'updated', syncedAt: now };
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Turmas!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: classGroup.id, operation: 'created', syncedAt: now };
+  }
+}
+export const appendClassToSheet = upsertClassInSheet;
+
+/**
+ * Idempotent Upsert for Subject (Disciplinas tab)
+ */
+export async function upsertSubjectInSheet(subject: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    subject.id,
+    subject.name,
+    subject.code || '',
+    subject.color || '#2563eb',
+    subject.totalWorkloadHours || 80
+  ];
+
+  const now = new Date().toISOString();
+  const existingRow = await findRowIndexById(sheets, spreadsheetId, 'Disciplinas', subject.id);
+
+  if (existingRow > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Disciplinas!A${existingRow}:E${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: subject.id, operation: 'updated', syncedAt: now };
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Disciplinas!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: subject.id, operation: 'created', syncedAt: now };
+  }
+}
+export const appendSubjectToSheet = upsertSubjectInSheet;
+
+/**
+ * Idempotent Upsert for Pedagogical Action (Encaminhamentos tab)
+ */
+export async function upsertActionInSheet(act: any, config?: GoogleSheetsConfig) {
+  const { sheets, spreadsheetId } = getSheetsClient(config);
+  await ensureSheetHeaders(sheets, spreadsheetId);
+
+  const row = [
+    act.id,
+    act.meetingId || '',
+    act.teacherId || '',
+    act.teacherName || '',
+    act.subjectId || '',
+    act.subjectName || '',
+    act.classGroupId || '',
+    act.classGroupName || '',
+    act.description,
+    act.category || 'OUTROS',
+    act.createdDate || new Date().toISOString().split('T')[0],
+    act.targetMeetingPeriod || 'Próxima Reunião',
+    act.status || 'PENDENTE'
+  ];
+
+  const now = new Date().toISOString();
+  const existingRow = await findRowIndexById(sheets, spreadsheetId, 'Encaminhamentos', act.id);
+
+  if (existingRow > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Encaminhamentos!A${existingRow}:M${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: act.id, operation: 'updated', syncedAt: now };
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Encaminhamentos!A2',
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [row] }
+    });
+    return { success: true, id: act.id, operation: 'created', syncedAt: now };
+  }
+}
+export const appendActionToSheet = upsertActionInSheet;
+
+/**
+ * Idempotent Upsert for Meeting (Reuniões tab) and its associated Actions
+ */
+export async function upsertMeetingInSheet(meeting: any, config?: GoogleSheetsConfig) {
   const { sheets, spreadsheetId } = getSheetsClient(config);
   await ensureSheetHeaders(sheets, spreadsheetId);
 
@@ -552,51 +731,54 @@ export async function appendMeetingToSheet(meeting: any, config?: GoogleSheetsCo
     meeting.coordinatorName || ''
   ];
 
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Reuniões!A2',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: {
-      values: [meetingRow]
-    }
-  });
+  const now = new Date().toISOString();
+  const existingRow = await findRowIndexById(sheets, spreadsheetId, 'Reuniões', meeting.id);
+  let operation: 'created' | 'updated' = 'created';
 
-  if (meeting.newActions && meeting.newActions.length > 0) {
-    const actionRows = meeting.newActions.map((act: any) => [
-      act.id,
-      meeting.id,
-      meeting.teacherId,
-      meeting.teacherName,
-      meeting.subjectId,
-      meeting.subjectName,
-      meeting.classGroupId,
-      meeting.classGroupName,
-      act.description,
-      act.category,
-      act.createdDate || meeting.meetingDate,
-      act.targetMeetingPeriod,
-      act.status || 'PENDENTE'
-    ]);
-
+  if (existingRow > 0) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `Reuniões!A${existingRow}:R${existingRow}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [meetingRow] }
+    });
+    operation = 'updated';
+  } else {
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: 'Encaminhamentos!A2',
+      range: 'Reuniões!A2',
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: actionRows
-      }
+      requestBody: { values: [meetingRow] }
     });
+    operation = 'created';
   }
 
-  return { success: true };
+  // Idempotent upsert for all associated actions
+  if (meeting.newActions && meeting.newActions.length > 0) {
+    for (const act of meeting.newActions) {
+      await upsertActionInSheet({
+        ...act,
+        meetingId: meeting.id,
+        teacherId: meeting.teacherId,
+        teacherName: meeting.teacherName,
+        subjectId: meeting.subjectId,
+        subjectName: meeting.subjectName,
+        classGroupId: meeting.classGroupId,
+        classGroupName: meeting.classGroupName,
+        createdDate: act.createdDate || meeting.meetingDate
+      }, config);
+    }
+  }
+
+  return { success: true, id: meeting.id, operation, syncedAt: now };
 }
+export const appendMeetingToSheet = upsertMeetingInSheet;
 
 /**
- * Appends a single plan's topics after the last row in Planejamento tab
+ * Idempotent Upsert for Bimonthly Plan in Planejamento tab
  */
-export async function appendPlanToSheet(plan: any, config?: GoogleSheetsConfig) {
+export async function upsertPlanInSheet(plan: any, config?: GoogleSheetsConfig) {
   const { sheets, spreadsheetId } = getSheetsClient(config);
   await ensureSheetHeaders(sheets, spreadsheetId);
 
@@ -622,132 +804,53 @@ export async function appendPlanToSheet(plan: any, config?: GoogleSheetsConfig) 
     });
   });
 
-  if (planRows.length > 0) {
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: 'Planejamento!A2',
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: planRows
-      }
-    });
+  const now = new Date().toISOString();
+
+  // Read all rows from Planejamento to check if plan.id exists
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'Planejamento!A2:M3000'
+  }).catch(() => ({ data: { values: [] } }));
+
+  const currentRows: any[][] = res.data.values || [];
+  const matchingIndices: number[] = [];
+  currentRows.forEach((r, idx) => {
+    if (r && String(r[0]).trim() === String(plan.id).trim()) {
+      matchingIndices.push(idx);
+    }
+  });
+
+  if (matchingIndices.length === 0) {
+    // New plan, append rows
+    if (planRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'Planejamento!A2',
+        valueInputOption: 'USER_ENTERED',
+        insertDataOption: 'INSERT_ROWS',
+        requestBody: { values: planRows }
+      });
+    }
+    return { success: true, id: plan.id, operation: 'created', rows: planRows.length, syncedAt: now };
+  } else {
+    // Existing plan: rebuild sheet content preserving all other plans
+    const remainingRows = currentRows.filter((r) => !r || String(r[0]).trim() !== String(plan.id).trim());
+    const finalRows = [...remainingRows, ...planRows];
+
+    // Clear and write updated rows
+    await sheets.spreadsheets.values.clear({ spreadsheetId, range: 'Planejamento!A2:M3000' }).catch(() => {});
+    if (finalRows.length > 0) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: 'Planejamento!A2',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: finalRows }
+      });
+    }
+    return { success: true, id: plan.id, operation: 'updated', rows: planRows.length, syncedAt: now };
   }
-
-  return { success: true, appendedRows: planRows.length };
 }
-
-/**
- * Appends a new teacher after the last row in Professores tab
- */
-export async function appendTeacherToSheet(teacher: any, config?: GoogleSheetsConfig) {
-  const { sheets, spreadsheetId } = getSheetsClient(config);
-  await ensureSheetHeaders(sheets, spreadsheetId);
-
-  const row = [
-    teacher.id,
-    teacher.name,
-    teacher.email || '',
-    teacher.avatarUrl || '',
-    (teacher.subjects || []).join(', '),
-    (teacher.classes || []).join(', ')
-  ];
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Professores!A2',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] }
-  });
-
-  return { success: true };
-}
-
-/**
- * Appends a new class after the last row in Turmas tab
- */
-export async function appendClassToSheet(classGroup: any, config?: GoogleSheetsConfig) {
-  const { sheets, spreadsheetId } = getSheetsClient(config);
-  await ensureSheetHeaders(sheets, spreadsheetId);
-
-  const row = [
-    classGroup.id,
-    classGroup.name,
-    classGroup.shift || 'MANHA',
-    classGroup.totalStudents || 0
-  ];
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Turmas!A2',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] }
-  });
-
-  return { success: true };
-}
-
-/**
- * Appends a new subject after the last row in Disciplinas tab
- */
-export async function appendSubjectToSheet(subject: any, config?: GoogleSheetsConfig) {
-  const { sheets, spreadsheetId } = getSheetsClient(config);
-  await ensureSheetHeaders(sheets, spreadsheetId);
-
-  const row = [
-    subject.id,
-    subject.name,
-    subject.code || '',
-    subject.color || '#2563eb',
-    subject.totalWorkloadHours || 80
-  ];
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Disciplinas!A2',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] }
-  });
-
-  return { success: true };
-}
-
-/**
- * Appends a single pedagogical action after the last row in Encaminhamentos tab
- */
-export async function appendActionToSheet(act: any, config?: GoogleSheetsConfig) {
-  const { sheets, spreadsheetId } = getSheetsClient(config);
-  await ensureSheetHeaders(sheets, spreadsheetId);
-
-  const row = [
-    act.id,
-    act.meetingId || '',
-    act.teacherId || '',
-    act.teacherName || '',
-    act.subjectId || '',
-    act.subjectName || '',
-    act.classGroupId || '',
-    act.classGroupName || '',
-    act.description,
-    act.category || 'OUTROS',
-    act.createdDate || new Date().toISOString().split('T')[0],
-    act.targetMeetingPeriod || 'Próxima Reunião',
-    act.status || 'PENDENTE'
-  ];
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId,
-    range: 'Encaminhamentos!A2',
-    valueInputOption: 'USER_ENTERED',
-    insertDataOption: 'INSERT_ROWS',
-    requestBody: { values: [row] }
-  });
-
-  return { success: true };
-}
+export const appendPlanToSheet = upsertPlanInSheet;
 
 /**
  * Updates an action's status directly in the Encaminhamentos sheet
@@ -757,11 +860,12 @@ export async function updateActionStatusInSheet(actionId: string, newStatus: str
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'Encaminhamentos!A2:M1000'
+    range: 'Encaminhamentos!A2:M2000'
   }).catch(() => ({ data: { values: [] } }));
 
   const rows = res.data.values || [];
-  const rowIndex = rows.findIndex((r: any[]) => r[0] === actionId);
+  const rowIndex = rows.findIndex((r: any[]) => r && String(r[0]).trim() === String(actionId).trim());
+  const now = new Date().toISOString();
 
   if (rowIndex !== -1) {
     const sheetRowNumber = rowIndex + 2;
@@ -773,10 +877,10 @@ export async function updateActionStatusInSheet(actionId: string, newStatus: str
         values: [[newStatus]]
       }
     });
-    return { success: true, updatedRow: sheetRowNumber };
+    return { success: true, id: actionId, operation: 'updated_status', updatedRow: sheetRowNumber, syncedAt: now };
   }
 
-  return { success: false, error: 'Ação não localizada na planilha' };
+  return { success: false, id: actionId, error: 'Ação não localizada na planilha', retryable: false };
 }
 
 /**

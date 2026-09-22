@@ -13,7 +13,11 @@ import {
   Server,
   Lock,
   Database,
-  Info
+  Info,
+  Layers,
+  RotateCcw,
+  Check,
+  Activity
 } from 'lucide-react';
 import { 
   Teacher, 
@@ -24,6 +28,7 @@ import {
   PedagogicalAction 
 } from '../types';
 import { sheetsService, ServerSheetsStatus } from '../services/sheetsService';
+import { syncQueueService, SyncQueueItem, SyncAuditLog } from '../services/syncQueueService';
 
 interface GoogleSheetsSyncModalProps {
   isOpen: boolean;
@@ -66,6 +71,18 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
   const [syncResult, setSyncResult] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const [showConfigGuide, setShowConfigGuide] = useState<boolean>(false);
+
+  // Sync Queue state
+  const [queueItems, setQueueItems] = useState<SyncQueueItem[]>([]);
+  const [auditLogs, setAuditLogs] = useState<SyncAuditLog[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = syncQueueService.subscribe((items, logs) => {
+      setQueueItems(items);
+      setAuditLogs(logs);
+    });
+    return unsubscribe;
+  }, []);
 
   // Fetch server status on mount / open
   const fetchStatus = async () => {
@@ -175,6 +192,12 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
     }
   };
 
+  const handleRetryQueue = () => {
+    syncQueueService.retryAllErrors();
+  };
+
+  const summary = syncQueueService.getSummary();
+
   if (!isOpen) return null;
 
   return (
@@ -224,6 +247,90 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
                 As chaves de acesso da Conta de Serviço e tokens de autenticação ficam isoladas exclusivamente nas variáveis de ambiente do backend. O navegador não armazena nem transmite chaves privadas, garantindo a integridade dos dados escolares.
               </p>
             </div>
+          </div>
+
+          {/* Sync Queue Engine Status Card */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                <Activity className="w-4 h-4 text-indigo-600" />
+                Fila de Sincronização e Resiliência Automática
+              </h4>
+
+              {(summary.errors > 0 || summary.pending > 0) && (
+                <button
+                  onClick={handleRetryQueue}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-100/70 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Sincronizar Pendências</span>
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              <div className="bg-white border border-slate-200 rounded-lg p-2.5">
+                <div className="text-[10px] text-slate-500 font-medium">Status Geral</div>
+                <div className="text-xs font-bold mt-0.5 flex items-center justify-center gap-1">
+                  {summary.errors > 0 ? (
+                    <span className="text-rose-600">Erro ({summary.errors})</span>
+                  ) : summary.syncing > 0 ? (
+                    <span className="text-amber-600">Sincronizando...</span>
+                  ) : summary.pending > 0 ? (
+                    <span className="text-amber-600">Pendente ({summary.pending})</span>
+                  ) : (
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Atualizado
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-lg p-2.5">
+                <div className="text-[10px] text-slate-500 font-medium">Pendentes</div>
+                <div className="text-xs font-bold text-slate-800 mt-0.5">
+                  {summary.pending}
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-lg p-2.5">
+                <div className="text-[10px] text-slate-500 font-medium">Falhas / Erros</div>
+                <div className="text-xs font-bold text-rose-600 mt-0.5">
+                  {summary.errors}
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-lg p-2.5">
+                <div className="text-[10px] text-slate-500 font-medium">Conexão</div>
+                <div className="text-xs font-bold text-slate-800 mt-0.5">
+                  {summary.isOnline ? <span className="text-emerald-600">Online</span> : <span className="text-rose-600">Offline</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Audit Logs List */}
+            {auditLogs.length > 0 && (
+              <div className="pt-2 border-t border-slate-200/80">
+                <div className="text-[10px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">
+                  Histórico Recente de Operações
+                </div>
+                <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                  {auditLogs.slice(0, 5).map(log => (
+                    <div key={log.id} className="text-[10px] flex items-center justify-between p-1.5 rounded-md bg-white border border-slate-100">
+                      <div className="flex items-center gap-1.5 truncate max-w-[80%]">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${log.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        <span className="font-mono text-slate-400 text-[9px]">{log.timestamp}</span>
+                        <span className="font-medium text-slate-700 capitalize">{log.entityType} ({log.operation})</span>
+                        {log.details && <span className="text-slate-400 truncate">({log.details})</span>}
+                      </div>
+                      <span className={`text-[9px] font-semibold ${log.status === 'success' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {log.status === 'success' ? 'Sucesso' : 'Erro'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Server Configuration Status */}

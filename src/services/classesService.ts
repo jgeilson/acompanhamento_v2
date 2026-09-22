@@ -5,39 +5,38 @@
 
 import { ClassGroup } from '../types';
 import { STORAGE_KEYS, saveLocalData } from './storageService';
+import { syncQueueService } from './syncQueueService';
 
 export const classesService = {
   /**
-   * Save a new class to Google Sheets
+   * Save/Upsert a class group to Google Sheets via persistent queue
    */
   async saveToSheets(classGroup: ClassGroup): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch('/api/sheets/save-class', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classGroup })
-      });
-      return await res.json();
+      syncQueueService.enqueue('class', classGroup.id, 'upsert', classGroup);
+      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Network error' };
+      return { success: false, error: error?.message || 'Enqueue error' };
     }
   },
 
   /**
-   * Adds a new class to the list and updates localStorage
+   * Adds a new class to the list, updates localStorage and sync queue
    */
   add(current: ClassGroup[], newClass: ClassGroup): ClassGroup[] {
     const next = [...current, newClass];
     saveLocalData(STORAGE_KEYS.CLASSES, next);
+    syncQueueService.enqueue('class', newClass.id, 'upsert', newClass);
     return next;
   },
 
   /**
-   * Updates an existing class in the list and updates localStorage
+   * Updates an existing class in the list, updates localStorage and sync queue
    */
   update(current: ClassGroup[], updatedClass: ClassGroup): ClassGroup[] {
     const next = current.map(c => c.id === updatedClass.id ? updatedClass : c);
     saveLocalData(STORAGE_KEYS.CLASSES, next);
+    syncQueueService.enqueue('class', updatedClass.id, 'upsert', updatedClass);
     return next;
   },
 
@@ -50,3 +49,4 @@ export const classesService = {
     return next;
   }
 };
+

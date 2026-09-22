@@ -5,26 +5,23 @@
 
 import { BiweeklyMeeting, PedagogicalAction } from '../types';
 import { STORAGE_KEYS, saveLocalData } from './storageService';
+import { syncQueueService } from './syncQueueService';
 
 export const meetingsService = {
   /**
-   * Save a new meeting to Google Sheets (append to 'Reuniões' and new actions to 'Encaminhamentos')
+   * Save/Upsert a meeting to Google Sheets via persistent queue
    */
   async saveToSheets(meeting: BiweeklyMeeting): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch('/api/sheets/save-meeting', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ meeting })
-      });
-      return await res.json();
+      syncQueueService.enqueue('meeting', meeting.id, 'upsert', meeting);
+      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Network error' };
+      return { success: false, error: error?.message || 'Enqueue error' };
     }
   },
 
   /**
-   * Adds a new meeting to the list, updates actions list if any new actions were generated, and persists to localStorage
+   * Adds a new meeting to the list, updates actions list if any new actions were generated, persists to localStorage and enqueues to sync queue
    */
   add(
     currentMeetings: BiweeklyMeeting[],
@@ -39,7 +36,20 @@ export const meetingsService = {
     saveLocalData(STORAGE_KEYS.MEETINGS, nextMeetings);
     saveLocalData(STORAGE_KEYS.ACTIONS, nextActions);
 
+    // Enqueue meeting (which handles both meeting and its newActions idempotently)
+    syncQueueService.enqueue('meeting', newMeeting.id, 'upsert', newMeeting);
+
     return { nextMeetings, nextActions };
+  },
+
+  /**
+   * Updates an existing meeting
+   */
+  update(currentMeetings: BiweeklyMeeting[], updatedMeeting: BiweeklyMeeting): BiweeklyMeeting[] {
+    const next = currentMeetings.map(m => m.id === updatedMeeting.id ? updatedMeeting : m);
+    saveLocalData(STORAGE_KEYS.MEETINGS, next);
+    syncQueueService.enqueue('meeting', updatedMeeting.id, 'upsert', updatedMeeting);
+    return next;
   },
 
   /**
@@ -51,3 +61,4 @@ export const meetingsService = {
     return next;
   }
 };
+

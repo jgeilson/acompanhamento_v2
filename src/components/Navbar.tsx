@@ -78,27 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {onOpenSheetsSync && (
-              <button
-                onClick={onOpenSheetsSync}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all ${
-                  isSheetsConfigured
-                    ? 'bg-emerald-950/60 hover:bg-emerald-950 border-emerald-700/60 text-emerald-300'
-                    : 'bg-slate-800 hover:bg-slate-750 border-slate-700 text-slate-300'
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${isSheetsConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                <span className="hidden sm:inline">Google Sheets</span>
-              </button>
-            )}
-
-            <button
-              onClick={onOpenNewMeeting}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-colors"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>Nova Reunião</span>
-            </button>
+            
           </div>
 
         </div>

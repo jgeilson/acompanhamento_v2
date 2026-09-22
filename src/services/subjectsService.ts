@@ -5,39 +5,38 @@
 
 import { Subject } from '../types';
 import { STORAGE_KEYS, saveLocalData } from './storageService';
+import { syncQueueService } from './syncQueueService';
 
 export const subjectsService = {
   /**
-   * Save a new subject to Google Sheets
+   * Save/Upsert a subject to Google Sheets via persistent queue
    */
   async saveToSheets(subject: Subject): Promise<{ success: boolean; error?: string }> {
     try {
-      const res = await fetch('/api/sheets/save-subject', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject })
-      });
-      return await res.json();
+      syncQueueService.enqueue('subject', subject.id, 'upsert', subject);
+      return { success: true };
     } catch (error: any) {
-      return { success: false, error: error?.message || 'Network error' };
+      return { success: false, error: error?.message || 'Enqueue error' };
     }
   },
 
   /**
-   * Adds a new subject to the list and updates localStorage
+   * Adds a new subject to the list, updates localStorage and sync queue
    */
   add(current: Subject[], newSubject: Subject): Subject[] {
     const next = [...current, newSubject];
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
+    syncQueueService.enqueue('subject', newSubject.id, 'upsert', newSubject);
     return next;
   },
 
   /**
-   * Updates an existing subject in the list and updates localStorage
+   * Updates an existing subject in the list, updates localStorage and sync queue
    */
   update(current: Subject[], updatedSubject: Subject): Subject[] {
     const next = current.map(s => s.id === updatedSubject.id ? updatedSubject : s);
     saveLocalData(STORAGE_KEYS.SUBJECTS, next);
+    syncQueueService.enqueue('subject', updatedSubject.id, 'upsert', updatedSubject);
     return next;
   },
 
@@ -50,3 +49,4 @@ export const subjectsService = {
     return next;
   }
 };
+
