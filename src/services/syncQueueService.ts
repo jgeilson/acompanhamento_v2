@@ -162,6 +162,10 @@ class SyncQueueManager {
     return [...this.queue];
   }
 
+  public getQueue(): SyncQueueItem[] {
+    return this.getItems();
+  }
+
   public getLogs(): SyncAuditLog[] {
     return [...this.logs];
   }
@@ -296,7 +300,7 @@ class SyncQueueManager {
             this.addLog(item.entityType, item.entityId, item.operation, 'success', result.operation ? `Operação: ${result.operation}` : undefined);
             this.emitEvent({ type: 'synced', item });
           } else {
-            const isFatal = result.retryable === false;
+            const isFatal = result.retryable === false || item.attempts >= item.maxAttempts;
             item.status = 'error';
             item.lastError = result.error || 'Erro desconhecido na sincronização remota';
             item.isPermanentError = isFatal;
@@ -305,8 +309,10 @@ class SyncQueueManager {
             this.emitEvent({ type: 'error', item, error: item.lastError || 'Erro de sincronização' });
           }
         } catch (err: any) {
+          const isFatal = item.attempts >= item.maxAttempts;
           item.status = 'error';
           item.lastError = err?.message || 'Falha de conexão com o servidor';
+          item.isPermanentError = isFatal;
           item.nextAttemptAt = Date.now() + this.calculateBackoffDelay(item.attempts);
           this.addLog(item.entityType, item.entityId, item.operation, 'error', item.lastError);
           this.emitEvent({ type: 'error', item, error: item.lastError || 'Falha de conexão com o servidor' });
@@ -447,6 +453,115 @@ class SyncQueueManager {
   public clearSynced(): void {
     this.queue = this.queue.filter(i => i.status !== 'synced');
     this.saveToStorage();
+  }
+
+  /**
+   * Reconciles remote entity list with pending local changes in the queue.
+   * Entities that have pending local queue items (upsert, update_status, or delete) are preserved locally,
+   * while entities without pending local changes are safely updated from remote Sheets data.
+   */
+  public reconcileWithRemote<T extends { id: string }>(
+    entityType: SyncEntityType,
+    remoteList: T[] = [],
+    currentLocalList: T[] = []
+  ): T[] {
+    const pendingItems = this.queue.filter(item => {
+      const isMatchingType = item.entityType === entityType || 
+        (entityType === 'action' && item.entityType === 'action_status');
+      const isPending = item.status === 'pending' || item.status === 'syncing' || (item.status === 'error' && !item.isPermanentError);
+      return isMatchingType && isPending;
+    });
+
+    if (pendingItems.length === 0) {
+      return remoteList || [];
+    }
+
+    const pendingByEntityId = new Map<string, SyncQueueItem>();
+    for (const item of pendingItems) {
+      pendingByEntityId.set(item.entityId, item);
+    }
+
+    const currentLocalById = new Map<string, T>();
+    for (const item of (currentLocalList || [])) {
+      if (item && item.id) {
+        currentLocalById.set(item.id, item);
+      }
+    }
+
+    const resultMap = new Map<string, T>();
+
+    // 1. Process remote items
+    for (const remoteItem of (remoteList || [])) {
+      if (!remoteItem || !remoteItem.id) continue;
+      const pendingItem = pendingByEntityId.get(remoteItem.id);
+
+      if (pendingItem) {
+        if (pendingItem.operation === 'delete') {
+          // Local pending deletion: omit remote item
+          continue;
+        }
+        // Local pending upsert or status update: preserve local version or payload
+        const localVer = currentLocalById.get(remoteItem.id) || (pendingItem.payload as T);
+        if (localVer) {
+          resultMap.set(remoteItem.id, localVer);
+        }
+      } else {
+        // No local pending change: accept remote item
+        resultMap.set(remoteItem.id, remoteItem);
+      }
+    }
+
+    // 2. Process local items with pending changes that are not in remoteList
+    for (const [entityId, pendingItem] of pendingByEntityId.entries()) {
+      if (pendingItem.operation === 'delete') continue;
+
+      if (!resultMap.has(entityId)) {
+        const localVer = currentLocalById.get(entityId) || (pendingItem.payload as T);
+        if (localVer) {
+          resultMap.set(entityId, localVer);
+        }
+      }
+    }
+
+    return Array.from(resultMap.values());
+  }
+
+  /**
+   * Reconciles all entity collections from remote Sheets with current local state
+   */
+  public reconcileAll<
+    T extends { id: string },
+    C extends { id: string },
+    S extends { id: string },
+    P extends { id: string },
+    M extends { id: string },
+    A extends { id: string }
+  >(
+    remoteData: {
+      teachers?: T[];
+      classGroups?: C[];
+      subjects?: S[];
+      bimonthlyPlans?: P[];
+      meetings?: M[];
+      actions?: A[];
+    },
+    currentLocalData: {
+      teachers: T[];
+      classGroups: C[];
+      subjects: S[];
+      bimonthlyPlans: P[];
+      meetings: M[];
+      actions: A[];
+    }
+  ) {
+    return {
+      teachers: this.reconcileWithRemote<T>('teacher', remoteData.teachers || [], currentLocalData.teachers || []),
+      classGroups: this.reconcileWithRemote<C>('class', remoteData.classGroups || [], currentLocalData.classGroups || []),
+      subjects: this.reconcileWithRemote<S>('subject', remoteData.subjects || [], currentLocalData.subjects || []),
+      bimonthlyPlans: this.reconcileWithRemote<P>('plan', remoteData.bimonthlyPlans || [], currentLocalData.bimonthlyPlans || []),
+      meetings: this.reconcileWithRemote<M>('meeting', remoteData.meetings || [], currentLocalData.meetings || []),
+      actions: this.reconcileWithRemote<A>('action', remoteData.actions || [], currentLocalData.actions || []),
+    };
   }
 }
 
