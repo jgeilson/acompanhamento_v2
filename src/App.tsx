@@ -179,7 +179,7 @@ export default function App() {
       .then(res => res.json())
       .then(result => {
         if (result.success) {
-          showFeedback('Dados sincronizados Sucesso!');
+          showFeedback('Dados sincronizados com sucesso!');
         }
       })
       .catch(() => {});
