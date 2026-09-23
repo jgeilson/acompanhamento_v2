@@ -130,6 +130,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
 
   const availableSubjects = React.useMemo(() => {
     if (!selectedTeacher) return subjects;
+    const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
     const filtered = subjects.filter(s => {
       if (selectedTeacher.subjects && selectedTeacher.subjects.length > 0) {
         const match = selectedTeacher.subjects.some(
@@ -137,15 +138,18 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         );
         if (match) return true;
       }
-      const hasPlan = bimonthlyPlans.some(p => p.teacherId === selectedTeacher.id && p.subjectId === s.id);
+      const hasPlan = bimonthlyPlans.some(
+        p => p.teacherId === selectedTeacher.id && p.subjectId === s.id && Number(p.year || 2026) === meetingYear
+      );
       if (hasPlan) return true;
       return false;
     });
     return filtered.length > 0 ? filtered : subjects;
-  }, [selectedTeacher, subjects, bimonthlyPlans]);
+  }, [selectedTeacher, subjects, bimonthlyPlans, meetingDate]);
 
   const availableClassGroups = React.useMemo(() => {
     if (!selectedTeacher) return classGroups;
+    const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
     const filtered = classGroups.filter(c => {
       if (selectedTeacher.classes && selectedTeacher.classes.length > 0) {
         const match = selectedTeacher.classes.some(
@@ -156,13 +160,14 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
       const hasPlan = bimonthlyPlans.some(p => {
         const matchTeacher = p.teacherId === selectedTeacher.id;
         const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
-        return matchTeacher && pClasses.includes(c.id);
+        const matchYear = Number(p.year || 2026) === meetingYear;
+        return matchTeacher && pClasses.includes(c.id) && matchYear;
       });
       if (hasPlan) return true;
       return false;
     });
     return filtered.length > 0 ? filtered : classGroups;
-  }, [selectedTeacher, classGroups, bimonthlyPlans]);
+  }, [selectedTeacher, classGroups, bimonthlyPlans, meetingDate]);
 
   useEffect(() => {
     if (availableSubjects.length > 0 && !availableSubjects.some(s => s.id === selectedSubjectId)) {
