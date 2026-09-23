@@ -49,6 +49,46 @@ interface NewMeetingModalProps {
   defaultCoordinator?: string;
 }
 
+const getAutoPeriodReference = (periodicityType: MeetingPeriodicity, dateStr: string): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  if (isNaN(dateObj.getTime())) return '';
+
+  const months = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  
+  const monthName = months[dateObj.getMonth()];
+
+  switch (periodicityType) {
+    case 'SEMANAL': {
+      const start = new Date(dateObj.getFullYear(), 0, 1);
+      const diff = dateObj.getTime() - start.getTime() + (start.getTimezoneOffset() - dateObj.getTimezoneOffset()) * 60 * 1000;
+      const oneDay = 1000 * 60 * 60 * 24;
+      const dayOfYear = Math.floor(diff / oneDay) + 1;
+      const weekNum = Math.ceil(dayOfYear / 7);
+      return `Semana ${weekNum}`;
+    }
+    case 'MENSAL': {
+      return `Mês de ${monthName}`;
+    }
+    case 'QUINZENAL': {
+      const q = dateObj.getDate() <= 15 ? '1ª Quinzena' : '2ª Quinzena';
+      return `${q} de ${monthName}`;
+    }
+    case 'EXTRAORDINARIA': {
+      return `Reunião Extraordinária - ${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
+    }
+    case 'REGULAR':
+    default: {
+      const q = dateObj.getDate() <= 15 ? '1ª Quinzena' : '2ª Quinzena';
+      return `Encontro Regular (${q} de ${monthName})`;
+    }
+  }
+};
+
 export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   isOpen,
   onClose,
@@ -70,11 +110,20 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   const [selectedClassGroupId, setSelectedClassGroupId] = useState<string>('');
   const [bimester, setBimester] = useState<1 | 2 | 3 | 4>(3);
   const [periodicity, setPeriodicity] = useState<MeetingPeriodicity>('REGULAR');
-  const [fortnightPeriod, setFortnightPeriod] = useState<string>('Encontro Regular #1');
+  const [fortnightPeriod, setFortnightPeriod] = useState<string>('');
+  const [isPeriodManuallyEdited, setIsPeriodManuallyEdited] = useState<boolean>(false);
   const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [coordinatorName, setCoordinatorName] = useState<string>(() => {
     return defaultCoordinator || localStorage.getItem('default_coordinator_name') || DEFAULT_COORDINATOR_NAME;
   });
+
+  // Auto-derive period reference based on periodicity and meetingDate
+  useEffect(() => {
+    if (!isPeriodManuallyEdited && meetingDate) {
+      const derived = getAutoPeriodReference(periodicity, meetingDate);
+      setFortnightPeriod(derived);
+    }
+  }, [periodicity, meetingDate, isPeriodManuallyEdited]);
 
   // Derived teacher subjects and classes
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
@@ -328,11 +377,13 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
     const selectedSub = subjects.find(s => s.id === selectedSubjectId);
     const selectedClass = classGroups.find(c => c.id === selectedClassGroupId);
 
+    const meetingId = `meet-${Date.now()}`;
+
     const createdActions: PedagogicalAction[] = newActionsList
       .filter(a => a.description.trim() !== '')
       .map((a, idx) => ({
         id: `act-${Date.now()}-${idx}`,
-        meetingId: `meet-${Date.now()}`,
+        meetingId: meetingId,
         teacherId: selectedTeacherId,
         teacherName: selectedTeacher?.name || 'Professor',
         subjectId: selectedSubjectId,
@@ -349,7 +400,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
       }));
 
     const newMeeting: BiweeklyMeeting = {
-      id: `meet-${Date.now()}`,
+      id: meetingId,
       teacherId: selectedTeacherId,
       teacherName: selectedTeacher?.name || 'Professor',
       subjectId: selectedSubjectId,
@@ -487,17 +538,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                     onChange={(e) => {
                       const newP = e.target.value as MeetingPeriodicity;
                       setPeriodicity(newP);
-                      if (newP === 'SEMANAL') {
-                        setFortnightPeriod('Semana 38');
-                      } else if (newP === 'MENSAL') {
-                        setFortnightPeriod('Mês de Outubro');
-                      } else if (newP === 'QUINZENAL') {
-                        setFortnightPeriod('2ª Quinzena');
-                      } else if (newP === 'EXTRAORDINARIA') {
-                        setFortnightPeriod('Reunião Extraordinária #1');
-                      } else if (newP === 'REGULAR') {
-                        setFortnightPeriod('Encontro Regular #1');
-                      }
+                      setIsPeriodManuallyEdited(false); // Reset to allow auto-derivation
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:bg-white font-semibold"
                   >
@@ -513,7 +554,10 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
                   <input
                     type="text"
                     value={fortnightPeriod}
-                    onChange={(e) => setFortnightPeriod(e.target.value)}
+                    onChange={(e) => {
+                      setFortnightPeriod(e.target.value);
+                      setIsPeriodManuallyEdited(true); // User started typing, lock it
+                    }}
                     placeholder="Ex: Encontro #1, Semana 38, Mês de Outubro, Quinzena 2..."
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs text-slate-900 focus:bg-white"
                   />
