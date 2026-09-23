@@ -28,7 +28,8 @@ export const meetingsService = {
   },
 
   /**
-   * Adds a new meeting to the list, updates actions list if any new actions were generated, persists to localStorage and enqueues to sync queue
+   * Adds a new meeting to the list, updates actions list if any new actions were generated,
+   * updates status & history of previously verified actions, persists to localStorage and enqueues to sync queue
    */
   add(
     currentMeetings: BiweeklyMeeting[],
@@ -36,9 +37,61 @@ export const meetingsService = {
     newMeeting: BiweeklyMeeting
   ): { data: BiweeklyMeeting[]; nextMeetings: BiweeklyMeeting[]; nextActions: PedagogicalAction[]; sync: { queued: true; queueItemId: string } } {
     const nextMeetings = [...currentMeetings, newMeeting];
+
+    // Map previous verifications to updated action status & history
+    let updatedActions = [...currentActions];
+    if (newMeeting.previousActionsVerification && newMeeting.previousActionsVerification.length > 0) {
+      newMeeting.previousActionsVerification.forEach(ver => {
+        const actionIndex = updatedActions.findIndex(a => a.id === ver.actionId);
+        if (actionIndex >= 0) {
+          const action = updatedActions[actionIndex];
+          
+          let newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA' = 'PENDENTE';
+          if (ver.verificationResult === 'SUPERADA') {
+            newStatus = 'SUPERADA';
+          } else if (ver.verificationResult === 'PARCIALMENTE_SUPERADA') {
+            newStatus = 'EM_ANDAMENTO';
+          } else {
+            newStatus = 'PENDENTE';
+          }
+
+          const updatedAction: PedagogicalAction = {
+            ...action,
+            status: newStatus,
+            resultNotes: ver.notes || action.resultNotes,
+            history: action.history ? [
+              ...action.history,
+              {
+                id: `hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                date: newMeeting.meetingDate,
+                status: newStatus,
+                resultNotes: ver.notes || `Avaliação em reunião pedagógica: ${ver.verificationResult}`,
+                verifiedBy: newMeeting.coordinatorName
+              }
+            ] : [
+              {
+                id: `hist-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                date: newMeeting.meetingDate,
+                status: newStatus,
+                resultNotes: ver.notes || `Avaliação em reunião pedagógica: ${ver.verificationResult}`,
+                verifiedBy: newMeeting.coordinatorName
+              }
+            ]
+          };
+          updatedActions[actionIndex] = updatedAction;
+
+          // Enqueue status sync for this action so Google Sheets updates its status too!
+          syncQueueService.enqueue('action_status', action.id, 'update_status', {
+            actionId: action.id,
+            newStatus: newStatus
+          });
+        }
+      });
+    }
+
     const nextActions = newMeeting.newActions && newMeeting.newActions.length > 0 
-      ? [...currentActions, ...newMeeting.newActions] 
-      : currentActions;
+      ? [...updatedActions, ...newMeeting.newActions] 
+      : updatedActions;
 
     saveLocalData(STORAGE_KEYS.MEETINGS, nextMeetings);
     saveLocalData(STORAGE_KEYS.ACTIONS, nextActions);
