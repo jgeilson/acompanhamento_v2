@@ -321,25 +321,33 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
 
     setIsAiGenerating(true);
     try {
-      const response = await fetch('/api/gemini/assist-lesson', {
+      const selectedSub = subjects.find(s => s.id === selectedSubjectId);
+      const selectedClass = classGroups.find(c => c.id === selectedClassGroupId);
+      const reasonLabel = PEDAGOGICAL_REASON_OPTIONS.find(o => o.id === primaryReason)?.label || primaryReason;
+
+      const response = await fetch('/api/gemini/suggest-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Gere uma sugestão de encaminhamento pedagógico construtivo para a coordenação apoiar um professor baseando-se no seguinte contexto: "${pedagogicalContextNotes}". Motivo do desvio: "${primaryReason}". Seja direto, empático e prático (máximo 2 frases).`
+          context: pedagogicalContextNotes,
+          reason: reasonLabel,
+          subject: selectedSub?.name || 'Geral',
+          classGroup: selectedClass?.name || 'Geral'
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.text) {
+        const suggestionText = data.suggestion;
+        if (suggestionText) {
           // Append to first new action description
           setNewActionsList(prev => {
             const updated = [...prev];
             if (updated.length > 0) {
-              updated[0].description = data.text;
+              updated[0].description = suggestionText;
             } else {
               updated.push({
-                description: data.text,
+                description: suggestionText,
                 category: 'RECOMPOSICAO',
                 targetMeetingPeriod: 'Próxima Reunião'
               });
@@ -349,7 +357,6 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         }
       } else {
         // Fallback simulation if server API not active
-        const reasonObj = PEDAGOGICAL_REASON_OPTIONS.find(o => o.id === primaryReason);
         const fallbackText = `Realizar aula de recomposição de conceitos fundamentais no início das próximas aulas e fornecer lista de exercícios direcionados com gabarito para suporte aos estudantes.`;
         setNewActionsList(prev => {
           const updated = [...prev];

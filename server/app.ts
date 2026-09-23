@@ -60,6 +60,50 @@ apiRouter.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Gemini suggest action route
+apiRouter.post('/gemini/suggest-action', async (req, res) => {
+  try {
+    const { context, reason, subject, classGroup } = req.body;
+    if (!context) {
+      return res.status(400).json({ error: 'O contexto pedagógico é obrigatório.' });
+    }
+
+    const prompt = `
+Você é um especialista em coordenação pedagógica escolar (Brasil) e apoia professores com estratégias de recomposição de aprendizagem e acompanhamento didático.
+
+Com base nos dados abaixo:
+- Disciplina: ${subject || 'Geral'}
+- Turma: ${classGroup || 'Não informada'}
+- Motivo de desvio/foco: ${reason || 'Não informado'}
+- Contexto da reunião/Acompanhamento: "${context}"
+
+Gere uma única sugestão prática, construtiva e realista de encaminhamento pedagógico (máximo 2 frases) para que o professor ou a coordenação execute a fim de apoiar os alunos e superar o desafio mencionado.
+A sugestão deve ser empática, clara, acionável e alinhada às melhores práticas metodológicas.
+
+Retorne uma resposta estritamente no formato JSON com a seguinte estrutura:
+{
+  "suggestion": "A descrição sucinta do encaminhamento aqui."
+}
+`;
+
+    const ai = getGeminiClient();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const resultText = response.text || '{}';
+    const parsed = JSON.parse(resultText);
+    return res.json(parsed);
+  } catch (error: any) {
+    console.error('Erro na API Gemini Suggest Action:', error);
+    return res.status(500).json({ error: 'Falha ao processar sugestão com IA.' });
+  }
+});
+
 // Gemini assist lesson route
 apiRouter.post('/gemini/assist-lesson', async (req, res) => {
   try {
