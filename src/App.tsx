@@ -463,6 +463,7 @@ export default function App() {
             onAddAction={handleAddAction}
             onUpdateAction={handleUpdateAction}
             onDeleteAction={handleDeleteAction}
+            coordinatorName={appSettings.coordinatorName}
           />
         )}
 

@@ -44,6 +44,7 @@ interface PedagogicalActionsViewProps {
   onAddAction?: (action: PedagogicalAction) => void;
   onUpdateAction?: (action: PedagogicalAction) => void;
   onDeleteAction?: (actionId: string) => void;
+  coordinatorName?: string;
 }
 
 const CATEGORY_LABELS: Record<ActionCategory, string> = {
@@ -62,7 +63,8 @@ export const PedagogicalActionsView: React.FC<PedagogicalActionsViewProps> = ({
   onUpdateActionStatus,
   onAddAction,
   onUpdateAction,
-  onDeleteAction
+  onDeleteAction,
+  coordinatorName
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('TODOS');
@@ -313,7 +315,8 @@ export const PedagogicalActionsView: React.FC<PedagogicalActionsViewProps> = ({
       id: `cycle-${Date.now()}`,
       date: cycleDate,
       status: cycleStatus === 'SUPERADA' ? 'SUPERADA' : cycleStatus === 'EM_ANDAMENTO' ? 'EM_ANDAMENTO' : 'PENDENTE',
-      resultNotes: cycleResultNotes.trim() || 'Acompanhamento registrado sem observações adicionais.'
+      resultNotes: cycleResultNotes.trim() || 'Acompanhamento registrado sem observações adicionais.',
+      verifiedBy: coordinatorName || 'Coordenação Pedagógica'
     };
 
     const existingHistory = actionForCycle.history || [];
@@ -694,10 +697,15 @@ export const PedagogicalActionsView: React.FC<PedagogicalActionsViewProps> = ({
                           <div className="mt-2 space-y-2 pl-2 border-l-2 border-indigo-300 ml-2 pt-1 animate-in fade-in duration-150">
                             {action.history.map((entry, idx) => (
                               <div key={entry.id || idx} className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs shadow-2xs space-y-1">
-                                <div className="flex items-center justify-between font-bold text-[11px] border-b border-slate-100 pb-1">
-                                  <span className="text-slate-800 flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 text-slate-400" />
+                                <div className="flex items-center justify-between font-bold text-[11px] border-b border-slate-100 pb-1 flex-wrap gap-1">
+                                  <span className="text-slate-800 flex items-center gap-1 flex-wrap">
+                                    <Calendar className="w-3 h-3 text-slate-400 animate-pulse" />
                                     <span>{entry.date}</span>
+                                    {entry.verifiedBy && (
+                                      <span className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-bold">
+                                        Coord: {entry.verifiedBy}
+                                      </span>
+                                    )}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
                                     entry.status === 'SUPERADA'
@@ -880,8 +888,15 @@ export const PedagogicalActionsView: React.FC<PedagogicalActionsViewProps> = ({
                   <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
                     {actionForCycle.history.map((h, i) => (
                       <div key={h.id || i} className="bg-slate-50 p-2 rounded-lg border border-slate-200 text-[11px]">
-                        <div className="flex justify-between font-bold text-slate-800">
-                          <span>Data: {h.date}</span>
+                        <div className="flex justify-between font-bold text-slate-800 flex-wrap gap-1">
+                          <span className="flex items-center gap-1 flex-wrap">
+                            <span>Data: {h.date}</span>
+                            {h.verifiedBy && (
+                              <span className="text-[9px] bg-slate-200 text-slate-700 px-1 py-0.25 rounded font-semibold">
+                                Coord: {h.verifiedBy}
+                              </span>
+                            )}
+                          </span>
                           <span className={
                             h.status === 'SUPERADA' ? 'text-emerald-700' : h.status === 'EM_ANDAMENTO' ? 'text-blue-700' : 'text-amber-700'
                           }>
