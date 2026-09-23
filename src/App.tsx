@@ -475,6 +475,7 @@ export default function App() {
             onAddPlan={handleAddPlan}
             onUpdatePlan={handleUpdatePlan}
             onDeletePlan={handleDeletePlan}
+            academicYear={Number(appSettings.academicYear || 2026)}
           />
         )}
 

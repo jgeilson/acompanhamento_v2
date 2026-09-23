@@ -31,6 +31,7 @@ interface BimonthlyPlanningViewProps {
   onAddPlan: (plan: BimonthlyPlan) => void;
   onUpdatePlan: (plan: BimonthlyPlan) => void;
   onDeletePlan: (planId: string) => void;
+  academicYear?: number;
 }
 
 export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
@@ -40,7 +41,8 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
   classGroups,
   onAddPlan,
   onUpdatePlan,
-  onDeletePlan
+  onDeletePlan,
+  academicYear
 }) => {
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || '');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
@@ -53,8 +55,9 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
   const [planToDelete, setPlanToDelete] = useState<BimonthlyPlan | null>(null);
 
   const activeTeacher = teachers.find(t => t.id === selectedTeacherId);
+  const activeYear = academicYear || Number(localStorage.getItem('academic_year') || '2026');
 
-  // Compute available subjects for the selected teacher
+  // Compute available subjects for the selected teacher and active year
   const availableSubjects = React.useMemo(() => {
     if (!activeTeacher) return subjects;
 
@@ -65,16 +68,16 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
         );
         if (match) return true;
       }
-      const hasPlan = bimonthlyPlans.some(p => p.teacherId === activeTeacher.id && p.subjectId === s.id);
+      const hasPlan = bimonthlyPlans.some(p => p.teacherId === activeTeacher.id && p.subjectId === s.id && Number(p.year || 2026) === activeYear);
       if (hasPlan) return true;
 
       return false;
     });
 
     return filtered.length > 0 ? filtered : subjects;
-  }, [activeTeacher, subjects, bimonthlyPlans]);
+  }, [activeTeacher, subjects, bimonthlyPlans, activeYear]);
 
-  // Compute available class groups for the selected teacher
+  // Compute available class groups for the selected teacher and active year
   const availableClassGroups = React.useMemo(() => {
     if (!activeTeacher) return classGroups;
 
@@ -88,7 +91,8 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
       const hasPlan = bimonthlyPlans.some(p => {
         const matchTeacher = p.teacherId === activeTeacher.id;
         const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
-        return matchTeacher && pClasses.some(cId => cId === c.id || cId.toLowerCase() === c.name.toLowerCase());
+        const matchYear = Number(p.year || 2026) === activeYear;
+        return matchTeacher && pClasses.some(cId => cId === c.id || cId.toLowerCase() === c.name.toLowerCase()) && matchYear;
       });
       if (hasPlan) return true;
 
@@ -96,7 +100,7 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
     });
 
     return filtered.length > 0 ? filtered : classGroups;
-  }, [activeTeacher, classGroups, bimonthlyPlans]);
+  }, [activeTeacher, classGroups, bimonthlyPlans, activeYear]);
 
   // Keep selectedSubjectId valid for selected teacher
   React.useEffect(() => {
@@ -122,8 +126,7 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
       cRef === selectedClassGroupId || 
       (targetClass && cRef.toLowerCase() === targetClass.name.toLowerCase())
     );
-    const academicYear = Number(localStorage.getItem('academic_year') || '2026');
-    const matchYear = Number(p.year || 2026) === academicYear;
+    const matchYear = Number(p.year || 2026) === activeYear;
     return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(selectedBimester) && matchYear;
   });
 
