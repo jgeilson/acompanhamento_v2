@@ -36,7 +36,12 @@ export const plansService = {
   ): { data: BimonthlyPlan[]; nextPlans: BimonthlyPlan[]; isNew: boolean; sync: { queued: true; queueItemId: string } } {
     const newClasses = (newPlan.classGroupIds && newPlan.classGroupIds.length > 0) ? newPlan.classGroupIds : [newPlan.classGroupId];
     const existsIndex = currentPlans.findIndex(p => {
-      if (p.teacherId !== newPlan.teacherId || p.subjectId !== newPlan.subjectId || Number(p.bimester) !== Number(newPlan.bimester)) {
+      if (
+        p.teacherId !== newPlan.teacherId || 
+        p.subjectId !== newPlan.subjectId || 
+        Number(p.bimester) !== Number(newPlan.bimester) ||
+        Number(p.year || 2026) !== Number(newPlan.year || 2026)
+      ) {
         return false;
       }
       const existingClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];

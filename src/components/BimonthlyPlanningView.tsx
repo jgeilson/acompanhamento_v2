@@ -122,7 +122,9 @@ export const BimonthlyPlanningView: React.FC<BimonthlyPlanningViewProps> = ({
       cRef === selectedClassGroupId || 
       (targetClass && cRef.toLowerCase() === targetClass.name.toLowerCase())
     );
-    return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(selectedBimester);
+    const academicYear = Number(localStorage.getItem('academic_year') || '2026');
+    const matchYear = Number(p.year || 2026) === academicYear;
+    return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(selectedBimester) && matchYear;
   });
 
   const activeSubject = subjects.find(s => s.id === selectedSubjectId);

@@ -135,8 +135,11 @@ export const PedagogicalTimelineView: React.FC<PedagogicalTimelineViewProps> = (
   // --- Calculations for Class View Summary ---
   const classMeetingsAll = meetings.filter(m => m.classGroupId === selectedClassGroupId);
 
+  const academicYear = Number(localStorage.getItem('academic_year') || '2026');
+
   const classPlansAll = (plans || []).filter(p => 
-    p.classGroupId === selectedClassGroupId || p.classGroupIds?.includes(selectedClassGroupId)
+    (p.classGroupId === selectedClassGroupId || p.classGroupIds?.includes(selectedClassGroupId)) &&
+    Number(p.year || 2026) === academicYear
   );
 
   const totalPlannedTopicsCount = classPlansAll.reduce((acc, plan) => {

@@ -202,13 +202,16 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   const [topicProgressList, setTopicProgressList] = useState<TopicProgressItem[]>([]);
 
   useEffect(() => {
+    const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
+
     // Find plan for this teacher + subject + class
     const plan = bimonthlyPlans.find(p => {
       const matchTeacher = p.teacherId === selectedTeacherId;
       const matchSubject = p.subjectId === selectedSubjectId;
       const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
       const matchClass = pClasses.includes(selectedClassGroupId);
-      return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(bimester);
+      const matchYear = Number(p.year || 2026) === meetingYear;
+      return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(bimester) && matchYear;
     });
 
     if (plan && plan.periods.length > 0) {
