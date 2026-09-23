@@ -205,11 +205,12 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
 
   // Step 3 State: Planned Topics Progress
   const [topicProgressList, setTopicProgressList] = useState<TopicProgressItem[]>([]);
+  const [selectedPeriodIndex, setSelectedPeriodIndex] = useState<number>(0);
 
+  // Auto-detect and set appropriate period index when plan or fortnightPeriod changes
   useEffect(() => {
     const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
 
-    // Find plan for this teacher + subject + class
     const plan = bimonthlyPlans.find(p => {
       const matchTeacher = p.teacherId === selectedTeacherId;
       const matchSubject = p.subjectId === selectedSubjectId;
@@ -220,20 +221,51 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
     });
 
     if (plan && plan.periods.length > 0) {
-      // Load topics from all periods or current fortnight
-      const allTopics: TopicProgressItem[] = [];
-      plan.periods.forEach(p => {
-        p.topics.forEach(t => {
-          allTopics.push({
-            topicId: t.id,
-            topicTitle: t.title,
-            bnccCode: t.bnccCode,
-            status: 'EM_ANDAMENTO',
-            observation: ''
-          });
-        });
-      });
-      setTopicProgressList(allTopics);
+      let autoIndex = 0;
+      if (fortnightPeriod) {
+        const matchedIdx = plan.periods.findIndex(p => 
+          p.periodTitle.toLowerCase().includes(fortnightPeriod.toLowerCase()) ||
+          fortnightPeriod.toLowerCase().includes(p.periodTitle.toLowerCase()) ||
+          (p.periodTitle.toLowerCase().includes('quinzena') && fortnightPeriod.toLowerCase().includes('quinzena') && 
+           ((p.periodTitle.includes('1ª') && fortnightPeriod.includes('1ª')) || (p.periodTitle.includes('2ª') && fortnightPeriod.includes('2ª'))))
+        );
+        if (matchedIdx >= 0) {
+          autoIndex = matchedIdx;
+        }
+      }
+      setSelectedPeriodIndex(autoIndex);
+    } else {
+      setSelectedPeriodIndex(0);
+    }
+  }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans, meetingDate, fortnightPeriod]);
+
+  // Load topics for the selected period index
+  useEffect(() => {
+    const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
+
+    const plan = bimonthlyPlans.find(p => {
+      const matchTeacher = p.teacherId === selectedTeacherId;
+      const matchSubject = p.subjectId === selectedSubjectId;
+      const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
+      const matchClass = pClasses.includes(selectedClassGroupId);
+      const matchYear = Number(p.year || 2026) === meetingYear;
+      return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(bimester) && matchYear;
+    });
+
+    if (plan && plan.periods.length > 0) {
+      const activePeriod = plan.periods[selectedPeriodIndex] || plan.periods[0];
+      if (activePeriod && activePeriod.topics) {
+        const periodTopics = activePeriod.topics.map(t => ({
+          topicId: t.id,
+          topicTitle: t.title,
+          bnccCode: t.bnccCode,
+          status: 'EM_ANDAMENTO' as const,
+          observation: ''
+        }));
+        setTopicProgressList(periodTopics);
+      } else {
+        setTopicProgressList([]);
+      }
     } else {
       // Default fallback sample topics if no plan is found
       setTopicProgressList([
@@ -246,7 +278,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         }
       ]);
     }
-  }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans]);
+  }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans, meetingDate, selectedPeriodIndex]);
 
   // Step 4 State: Pedagogical Context & Reasons (multiple allowed)
   const [selectedReasons, setSelectedReasons] = useState<PedagogicalReasonType[]>(['DIFICULDADE_APRENDIZAGEM_RETOMADA']);
@@ -384,6 +416,18 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
       setIsAiGenerating(false);
     }
   };
+
+  const currentMeetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
+  const matchedPlan = React.useMemo(() => {
+    return bimonthlyPlans.find(p => {
+      const matchTeacher = p.teacherId === selectedTeacherId;
+      const matchSubject = p.subjectId === selectedSubjectId;
+      const pClasses = (p.classGroupIds && p.classGroupIds.length > 0) ? p.classGroupIds : [p.classGroupId];
+      const matchClass = pClasses.includes(selectedClassGroupId);
+      const matchYear = Number(p.year || 2026) === currentMeetingYear;
+      return matchTeacher && matchSubject && matchClass && Number(p.bimester) === Number(bimester) && matchYear;
+    });
+  }, [bimonthlyPlans, selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, currentMeetingYear]);
 
   // Handle Submit
   const handleSubmitMeeting = (e: React.FormEvent) => {
@@ -719,6 +763,33 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
           {/* STEP 3: Content Progress */}
           {currentStep === 3 && (
             <div className="space-y-4">
+              {matchedPlan && matchedPlan.periods.length > 0 && (
+                <div className="bg-slate-900 text-white p-4.5 rounded-2xl border border-slate-800 shadow-md space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-850 pb-1.5">
+                    <span className="text-[11px] font-extrabold text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>Período do Planejamento Bimestral Detectado</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold bg-slate-800 px-2 py-0.5 rounded-md">
+                      {matchedPlan.periods.length} Período(s) Cadastrado(s)
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <label className="text-[11px] font-bold text-indigo-200">Selecione a Etapa / Quinzena a acompanhar nesta Reunião:</label>
+                    <select
+                      value={selectedPeriodIndex}
+                      onChange={(e) => setSelectedPeriodIndex(Number(e.target.value))}
+                      className="w-full bg-slate-800 text-white border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-indigo-400 cursor-pointer outline-none"
+                    >
+                      {matchedPlan.periods.map((p, idx) => (
+                        <option key={idx} value={idx}>
+                          {p.periodTitle || `Etapa ${idx + 1}`} ({p.topics.length} tópico(s) previsto(s))
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {topicProgressList.map((topic, index) => (
                   <div key={topic.topicId} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">

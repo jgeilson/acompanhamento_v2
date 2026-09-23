@@ -46,13 +46,20 @@ export const meetingsService = {
         if (actionIndex >= 0) {
           const action = updatedActions[actionIndex];
           
+          // PEDAGOGICAL STATE MACHINE TRANSITIONS:
+          // - "SUPERADA" (Meeting) -> Global Status: "SUPERADA"
+          // - "PARCIALMENTE_SUPERADA" (Meeting) -> Global Status: "EM_ANDAMENTO"
+          // - "CONTINUA_PRESENTE" (Meeting) -> Global Status:
+          //   - If action was already "EM_ANDAMENTO" (in progress), we PRESERVE "EM_ANDAMENTO" (work is active, but difficulty persists).
+          //   - If action was "PENDENTE" (pending), it remains "PENDENTE".
           let newStatus: 'PENDENTE' | 'EM_ANDAMENTO' | 'SUPERADA' = 'PENDENTE';
           if (ver.verificationResult === 'SUPERADA') {
             newStatus = 'SUPERADA';
           } else if (ver.verificationResult === 'PARCIALMENTE_SUPERADA') {
             newStatus = 'EM_ANDAMENTO';
           } else {
-            newStatus = 'PENDENTE';
+            // ver.verificationResult === 'CONTINUA_PRESENTE' or 'PENDENTE_AVALIACAO'
+            newStatus = action.status === 'EM_ANDAMENTO' ? 'EM_ANDAMENTO' : 'PENDENTE';
           }
 
           const updatedAction: PedagogicalAction = {
