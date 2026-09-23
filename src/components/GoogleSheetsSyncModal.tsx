@@ -470,24 +470,29 @@ export const GoogleSheetsSyncModal: React.FC<GoogleSheetsSyncModalProps> = ({
             </div>
 
             {/* Upload / Sync All Card */}
-            <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div className="bg-amber-50/40 border border-amber-200 rounded-xl p-4 flex flex-col justify-between space-y-3">
               <div className="space-y-1.5">
-                <div className="flex items-center gap-2 font-bold text-emerald-950 text-xs">
-                  <UploadCloud className="w-4 h-4 text-emerald-700" />
-                  <span>Gravar Base na Planilha (Upload)</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-amber-950 text-xs">
+                    <UploadCloud className="w-4 h-4 text-amber-700" />
+                    <span>Regravar Base Completa (Upload Forçado)</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 text-[9px] bg-amber-100 text-amber-800 font-bold rounded-sm uppercase tracking-wide shrink-0">
+                    Ação Administrativa
+                  </span>
                 </div>
                 <p className="text-slate-600 text-[11px] leading-relaxed">
-                  Exporta e atualiza a base completa atual ({teachers.length} docentes, {classGroups.length} turmas, {meetings.length} reuniões) para as abas da Planilha Google.
+                  A fila automática em segundo plano já realiza a gravação normal e contínua dos dados em tempo real. Utilize esta ação <strong className="text-amber-900">exclusivamente em cenários excepcionais</strong> para forçar a sobrescrita completa de todas as abas da planilha com os dados locais.
                 </p>
               </div>
 
               <button
                 onClick={handleSyncAllData}
                 disabled={isSyncing}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs text-xs flex items-center justify-center gap-2 transition-all w-full"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs text-xs flex items-center justify-center gap-2 transition-all w-full"
               >
                 <UploadCloud className={`w-4 h-4 ${isSyncing ? 'animate-pulse' : ''}`} />
-                <span>{isSyncing ? 'Gravando dados...' : 'Gravar Tudo na Planilha'}</span>
+                <span>{isSyncing ? 'Substituindo dados...' : 'Sobrescrever Base na Planilha'}</span>
               </button>
             </div>
 
