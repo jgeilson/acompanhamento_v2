@@ -155,7 +155,7 @@ export const PlanModal: React.FC<PlanModalProps> = ({
       }
 
       setBimester(bim);
-      setYear(new Date().getFullYear());
+      setYear(Number(localStorage.getItem('academic_year') || '2026'));
       setPeriods([
         createEmptyPeriod(1, bim)
       ]);
