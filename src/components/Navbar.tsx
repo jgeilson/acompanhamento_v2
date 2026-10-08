@@ -97,7 +97,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
             }`}
           >
-            <span>Painel Geral</span>
+            <span>Panorama Pedagógico</span>
           </button>
 
           <button
