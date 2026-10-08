@@ -87,9 +87,6 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           <h2 className="text-2xl font-bold font-display text-slate-100">
             Reuniões de Acompanhamento
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Gerencie e consulte todas as atas registradas com o corpo docente.
-          </p>
         </div>
 
         <button

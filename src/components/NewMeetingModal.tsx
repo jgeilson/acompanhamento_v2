@@ -28,6 +28,7 @@ import {
   PedagogicalReasonType, 
   PEDAGOGICAL_REASON_OPTIONS,
   TopicProgressItem,
+  TopicProgressionStatus,
   PreviousActionVerification,
   ActionVerificationStatus,
   ActionCategory,
@@ -44,6 +45,7 @@ interface NewMeetingModalProps {
   classGroups: ClassGroup[];
   bimonthlyPlans: BimonthlyPlan[];
   existingActions: PedagogicalAction[];
+  meetings: BiweeklyMeeting[];
   onSaveMeeting: (meeting: BiweeklyMeeting) => void;
   initialTeacherId?: string;
   defaultCoordinator?: string;
@@ -97,6 +99,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
   classGroups,
   bimonthlyPlans,
   existingActions,
+  meetings,
   onSaveMeeting,
   initialTeacherId,
   defaultCoordinator
@@ -239,7 +242,24 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
     }
   }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans, meetingDate, fortnightPeriod]);
 
-  // Load topics for the selected period index
+  // Get chronological previous meetings for this teacher + subject + class + bimester
+  const previousMeetings = React.useMemo(() => {
+    if (!meetings || !selectedTeacherId || !selectedSubjectId || !selectedClassGroupId) {
+      return [];
+    }
+    const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
+    return meetings
+      .filter(m => 
+        m.teacherId === selectedTeacherId &&
+        m.subjectId === selectedSubjectId &&
+        m.classGroupId === selectedClassGroupId &&
+        Number(m.bimester) === Number(bimester) &&
+        (m.meetingDate ? Number(m.meetingDate.split('-')[0]) : 2026) === meetingYear
+      )
+      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime());
+  }, [meetings, selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, meetingDate]);
+
+  // Load and recover topics based on planning + previous meetings context
   useEffect(() => {
     const meetingYear = meetingDate ? Number(meetingDate.split('-')[0]) : new Date().getFullYear();
 
@@ -253,19 +273,49 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
     });
 
     if (plan && plan.periods.length > 0) {
-      const activePeriod = plan.periods[selectedPeriodIndex] || plan.periods[0];
-      if (activePeriod && activePeriod.topics) {
-        const periodTopics = activePeriod.topics.map(t => ({
-          topicId: t.id,
-          topicTitle: t.title,
-          bnccCode: t.bnccCode,
-          status: 'EM_ANDAMENTO' as const,
-          observation: ''
-        }));
-        setTopicProgressList(periodTopics);
-      } else {
-        setTopicProgressList([]);
+      // Gather all topics from all periods up to and including the selected period index (anterior/atual)
+      const cumulativeTopics: TopicProgressItem[] = [];
+      
+      for (let idx = 0; idx <= selectedPeriodIndex; idx++) {
+        const period = plan.periods[idx];
+        if (period && period.topics) {
+          for (const t of period.topics) {
+            // Find the most recent meeting tracking this topic
+            let lastStatus: TopicProgressionStatus = 'NAO_INICIADO';
+            let lastObservation = '';
+
+            for (let mIdx = previousMeetings.length - 1; mIdx >= 0; mIdx--) {
+              const prevMeeting = previousMeetings[mIdx];
+              if (prevMeeting.topicProgress) {
+                const found = prevMeeting.topicProgress.find(tp => tp.topicId === t.id);
+                if (found) {
+                  lastStatus = found.status;
+                  lastObservation = found.observation || '';
+                  break; // Found the most recent state
+                }
+              }
+            }
+
+            // Default fallback if never tracked in any previous meeting:
+            // If it belongs to the current selected period, default to 'EM_ANDAMENTO', otherwise 'NAO_INICIADO'
+            if (lastStatus === 'NAO_INICIADO' && idx === selectedPeriodIndex) {
+              lastStatus = 'EM_ANDAMENTO';
+            }
+
+            // Prevent duplicate topic IDs if any planning misconfiguration exists
+            if (!cumulativeTopics.some(item => item.topicId === t.id)) {
+              cumulativeTopics.push({
+                topicId: t.id,
+                topicTitle: t.title,
+                bnccCode: t.bnccCode,
+                status: lastStatus,
+                observation: lastObservation
+              });
+            }
+          }
+        }
       }
+      setTopicProgressList(cumulativeTopics);
     } else {
       // Default fallback sample topics if no plan is found
       setTopicProgressList([
@@ -278,7 +328,7 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
         }
       ]);
     }
-  }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans, meetingDate, selectedPeriodIndex]);
+  }, [selectedTeacherId, selectedSubjectId, selectedClassGroupId, bimester, bimonthlyPlans, meetingDate, selectedPeriodIndex, previousMeetings]);
 
   // Step 4 State: Pedagogical Context & Reasons (multiple allowed)
   const [selectedReasons, setSelectedReasons] = useState<PedagogicalReasonType[]>(['DIFICULDADE_APRENDIZAGEM_RETOMADA']);
@@ -791,51 +841,99 @@ export const NewMeetingModal: React.FC<NewMeetingModalProps> = ({
               )}
 
               <div className="space-y-3">
-                {topicProgressList.map((topic, index) => (
-                  <div key={topic.topicId} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <span className="font-bold text-slate-900 block text-xs">{topic.topicTitle}</span>
-                        {topic.bnccCode && (
-                          <span className="text-[10px] text-indigo-600 font-semibold">{topic.bnccCode}</span>
-                        )}
+                {topicProgressList.map((topic, index) => {
+                  const previousTracking = (() => {
+                    for (let mIdx = previousMeetings.length - 1; mIdx >= 0; mIdx--) {
+                      const prevMeeting = previousMeetings[mIdx];
+                      if (prevMeeting.topicProgress) {
+                        const found = prevMeeting.topicProgress.find(tp => tp.topicId === topic.topicId);
+                        if (found) {
+                          return {
+                            status: found.status,
+                            observation: found.observation,
+                            date: prevMeeting.meetingDate,
+                            period: prevMeeting.fortnightPeriod
+                          };
+                        }
+                      }
+                    }
+                    return null;
+                  })();
+
+                  return (
+                    <div key={topic.topicId} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-slate-900 block text-xs">{topic.topicTitle}</span>
+                          {topic.bnccCode && (
+                            <span className="text-[10px] text-indigo-600 font-semibold">{topic.bnccCode}</span>
+                          )}
+                        </div>
+
+                        {/* Status selector */}
+                        <select
+                          value={topic.status}
+                          onChange={(e) => {
+                            const updated = [...topicProgressList];
+                            updated[index].status = e.target.value as any;
+                            setTopicProgressList(updated);
+                          }}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                            topic.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                            topic.status === 'EM_ANDAMENTO' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                            topic.status === 'RETOMADA' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                            'bg-slate-200 text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          <option value="CONCLUIDO">✓ Concluído</option>
+                          <option value="EM_ANDAMENTO">⚡ Em Andamento</option>
+                          <option value="RETOMADA">🔄 Em Retomada / Recomposição</option>
+                          <option value="NAO_INICIADO">⏳ Não Iniciado / Pendente</option>
+                        </select>
                       </div>
 
-                      {/* Status selector */}
-                      <select
-                        value={topic.status}
+                      {/* Previous tracking historical context */}
+                      {previousTracking && (
+                        <div className="bg-white border-l-4 border-indigo-500 rounded-lg p-2.5 space-y-1 mt-1 text-[11px] text-slate-600 shadow-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-800">Acompanhamento Anterior:</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-extrabold border ${
+                              previousTracking.status === 'CONCLUIDO' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              previousTracking.status === 'EM_ANDAMENTO' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              previousTracking.status === 'RETOMADA' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                              {previousTracking.status === 'CONCLUIDO' ? '✓ Concluído' :
+                               previousTracking.status === 'EM_ANDAMENTO' ? '⚡ Em Andamento' :
+                               previousTracking.status === 'RETOMADA' ? '🔄 Em Retomada' : '⏳ Não Iniciado'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-x-3 text-[10px] text-slate-500">
+                            <span>📅 Data: <strong>{new Date(previousTracking.date + 'T00:00:00').toLocaleDateString('pt-BR')}</strong></span>
+                            <span>💬 Encontro: <strong>{previousTracking.period}</strong></span>
+                          </div>
+                          {previousTracking.observation && (
+                            <p className="italic text-slate-500 bg-slate-50 p-1.5 rounded border border-slate-100 mt-1">
+                              &ldquo;{previousTracking.observation}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <input
+                        type="text"
+                        placeholder="Comentário sobre o avanço nesta aula/conteúdo..."
+                        value={topic.observation || ''}
                         onChange={(e) => {
                           const updated = [...topicProgressList];
-                          updated[index].status = e.target.value as any;
+                          updated[index].observation = e.target.value;
                           setTopicProgressList(updated);
                         }}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${
-                          topic.status === 'CONCLUIDO' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                          topic.status === 'EM_ANDAMENTO' ? 'bg-blue-100 text-blue-800 border-blue-300' :
-                          topic.status === 'RETOMADA' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                          'bg-slate-200 text-slate-700 border-slate-300'
-                        }`}
-                      >
-                        <option value="CONCLUIDO">✓ Concluído</option>
-                        <option value="EM_ANDAMENTO">⚡ Em Andamento</option>
-                        <option value="RETOMADA">🔄 Em Retomada / Recomposição</option>
-                        <option value="NAO_INICIADO">⏳ Não Iniciado / Pendente</option>
-                      </select>
+                        className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
+                      />
                     </div>
-
-                    <input
-                      type="text"
-                      placeholder="Comentário sobre o avanço nesta aula/conteúdo..."
-                      value={topic.observation || ''}
-                      onChange={(e) => {
-                        const updated = [...topicProgressList];
-                        updated[index].observation = e.target.value;
-                        setTopicProgressList(updated);
-                      }}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

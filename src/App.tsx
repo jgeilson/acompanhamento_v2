@@ -517,6 +517,7 @@ export default function App() {
           classGroups={classGroups}
           bimonthlyPlans={bimonthlyPlans}
           existingActions={actions}
+          meetings={meetings}
           onSaveMeeting={handleSaveMeeting}
           initialTeacherId={initialTeacherForModal}
           defaultCoordinator={appSettings.coordinatorName}
